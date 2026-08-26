@@ -17,9 +17,8 @@ public class Main {
 
         char c = input.charAt(i);
 
-        if (c == '\''&& inDoubleQuote) {inSingleQuote = !inSingleQuote;}//toggle single quote state
-        if (c == '"'&& inSingleQuote) {inDoubleQuote = !inDoubleQuote;}//toggle double quote state
-        
+        if (c == '\''&& !inDoubleQuote) {inSingleQuote = !inSingleQuote;}//toggle single quote state
+        else if (c == '"'&& !inSingleQuote) {inDoubleQuote = !inDoubleQuote;}//toggle double quote state
         else if (Character.isWhitespace(c) && !inSingleQuote && !inDoubleQuote) {
             if (current.length() > 0) {
                 arguments.add(current.toString());
