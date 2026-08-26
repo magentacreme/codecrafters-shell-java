@@ -153,11 +153,13 @@ static void executeEcho(String[] parts,File currentDirectory)throws Exception{
 static void executeCommand(String[] parts,File currentDirectory,String executablePath)throws Exception{
         
     int redirectIndex = findOutputRedirect(parts);
+
     if (redirectIndex == -1) {
-        parts[0] = executablePath;
+        //parts[0] = executablePath;
         ProcessBuilder pb = new ProcessBuilder(parts);
         pb.directory(currentDirectory);
         pb.inheritIO();
+        
         Process process = pb.start();
         process.waitFor();
         return;
@@ -171,15 +173,11 @@ static void executeCommand(String[] parts,File currentDirectory,String executabl
     String[] commandParts = Arrays.copyOf(parts, redirectIndex);
 
         // Use actual executable path
-    commandParts[0] = executablePath;
+    //commandParts[0] = executablePath;
 
     ProcessBuilder pb = new ProcessBuilder(commandParts);
     pb.directory(currentDirectory);
-
-        // stdout -> file
     pb.redirectOutput(resolveFile(currentDirectory, outputFile));
-
-        // stderr -> terminal
     pb.redirectError(ProcessBuilder.Redirect.INHERIT);
 
     Process process = pb.start();
