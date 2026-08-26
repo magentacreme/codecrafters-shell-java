@@ -1,5 +1,6 @@
 import java.io.File;
 import java.nio.file.Files;
+import java.nio.file.StandardOpenOption;
 import java.util.Arrays;
 
 public final class ProcessExecutor {
@@ -12,7 +13,11 @@ public final class ProcessExecutor {
 
         if (stderrIndex != -1 && stderrIndex + 1 < parts.length) {
             File errFile = resolveFile(currentDirectory, parts[stderrIndex + 1]);
-            Files.writeString(errFile.toPath(), "");
+            if (isAppendRedirect(parts[stderrIndex])) {
+                Files.writeString(errFile.toPath(), "", StandardOpenOption.CREATE, StandardOpenOption.APPEND);
+            } else {
+                Files.writeString(errFile.toPath(), "");
+            }
         }
 
         int echoEnd = parts.length;
@@ -28,7 +33,11 @@ public final class ProcessExecutor {
         if (stdoutIndex != -1 && stdoutIndex + 1 < parts.length) {
             output.append(System.lineSeparator());
             File outFile = resolveFile(currentDirectory, parts[stdoutIndex + 1]);
-            Files.writeString(outFile.toPath(), output.toString());
+            if (isAppendRedirect(parts[stdoutIndex])) {
+                Files.writeString(outFile.toPath(), output.toString(), StandardOpenOption.CREATE, StandardOpenOption.APPEND);
+            } else {
+                Files.writeString(outFile.toPath(), output.toString());
+            }
         } else {
             System.out.println(output.toString());
         }
@@ -45,13 +54,23 @@ public final class ProcessExecutor {
         processBuilder.directory(currentDirectory);
 
         if (stdoutIndex != -1 && stdoutIndex + 1 < parts.length) {
-            processBuilder.redirectOutput(resolveFile(currentDirectory, parts[stdoutIndex + 1]));
+            File outputFile = resolveFile(currentDirectory, parts[stdoutIndex + 1]);
+            if (isAppendRedirect(parts[stdoutIndex])) {
+                processBuilder.redirectOutput(ProcessBuilder.Redirect.appendTo(outputFile));
+            } else {
+                processBuilder.redirectOutput(outputFile);
+            }
         } else {
             processBuilder.redirectOutput(ProcessBuilder.Redirect.INHERIT);
         }
 
         if (stderrIndex != -1 && stderrIndex + 1 < parts.length) {
-            processBuilder.redirectError(resolveFile(currentDirectory, parts[stderrIndex + 1]));
+            File errorFile = resolveFile(currentDirectory, parts[stderrIndex + 1]);
+            if (isAppendRedirect(parts[stderrIndex])) {
+                processBuilder.redirectError(ProcessBuilder.Redirect.appendTo(errorFile));
+            } else {
+                processBuilder.redirectError(errorFile);
+            }
         } else {
             processBuilder.redirectError(ProcessBuilder.Redirect.INHERIT);
         }
@@ -75,16 +94,21 @@ public final class ProcessExecutor {
 
     private static int findOutputRedirect(String[] parts) {
         for (int i = 0; i < parts.length; i++) {
-            if (parts[i].equals(">") || parts[i].equals("1>")) return i;
+            if (parts[i].equals(">") || parts[i].equals("1>")
+                    || parts[i].equals(">>") || parts[i].equals("1>>")) return i;
         }
         return -1;
     }
 
     private static int findErrorRedirect(String[] parts) {
         for (int i = 0; i < parts.length; i++) {
-            if (parts[i].equals("2>")) return i;
+            if (parts[i].equals("2>") || parts[i].equals("2>>")) return i;
         }
         return -1;
+    }
+
+    private static boolean isAppendRedirect(String redirect) {
+        return redirect.equals(">>") || redirect.equals("1>>") || redirect.equals("2>>");
     }
 
     private static File resolveFile(File currentDirectory, String path) {
