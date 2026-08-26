@@ -9,10 +9,29 @@ public class Main {
 
 static final Set<String> builtins =Set.of("exit", "echo", "type", "pwd", "cd");
 
+static int findOutputRedirect(String[] parts) {
+    for (int i = 0; i < parts.length; i++) {
+        if (parts[i].equals(">") || parts[i].equals("1>")) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+static int findErrorRedirect(String[] parts) {
+    for (int i = 0; i < parts.length; i++) {
+        if (parts[i].equals("2>")) {
+            return i;
+        }
+    }
+    return -1;
+}
+
 static File resolveFile(File currentDirectory, String path) {
     File file = new File(path);
     return file.isAbsolute() ? file : new File(currentDirectory, path);
 }
+
 static String[] parseInput(String input) {
         ArrayList<String> arguments = new ArrayList<>();
         StringBuilder current = new StringBuilder();
@@ -103,82 +122,65 @@ static String[] parseInput(String input) {
         return arguments.toArray(new String[0]);
     }
 
-static int findOutputRedirect(String[] parts) {
-        for (int i = 0; i < parts.length; i++) {
-            if (parts[i].equals(">") || parts[i].equals("1>")) {
-                return i;
-            }
-        }
-        return -1;
-    }
-
 static void executeEcho(String[] parts,File currentDirectory)throws Exception{
-        
-    int redirectIndex = findOutputRedirect(parts);
+    int stdoutIndex = findOutputRedirect(parts);
+    int stderrIndex = findErrorRedirect(parts);
 
-        if (redirectIndex == -1) {
-            for (int i = 1; i < parts.length; i++) {
-                if (i > 1) {
-                    System.out.print(" ");
-                }
-                System.out.print(parts[i]);
-            }
-
-            System.out.println();
-            return;
-        }
-
-        // Make sure filename exists
-        if (redirectIndex + 1 >= parts.length) {
-            System.out.println("Missing output file");
-            return;
-        }
-
-        String outputFile = parts[redirectIndex + 1];
-        StringBuilder output = new StringBuilder();
-
-        for (int i = 1; i < redirectIndex; i++) {
-            if (i > 1) {
-                output.append(" ");
-            }
-            output.append(parts[i]);
-        }
-        output.append(System.lineSeparator());
-
-        File file = resolveFile(currentDirectory, outputFile);
-        // > overwrites existing file
-        Files.writeString(file.toPath(), output.toString());
+    // Handle stderr file creation/truncation if 2> is present
+    if (stderrIndex != -1 && stderrIndex + 1 < parts.length) {
+        File errFile = resolveFile(currentDirectory, parts[stderrIndex + 1]);
+        Files.writeString(errFile.toPath(), "");
     }
+
+    // Determine end of echo content tokens
+    int echoEnd = parts.length;
+    if (stdoutIndex != -1) echoEnd = Math.min(echoEnd, stdoutIndex);
+    if (stderrIndex != -1) echoEnd = Math.min(echoEnd, stderrIndex);
+
+    StringBuilder output = new StringBuilder();
+    for (int i = 1; i < echoEnd; i++) {
+        if (i > 1) {
+            output.append(" ");
+        }
+        output.append(parts[i]);
+    }
+
+    // If stdout is redirected, write to file; otherwise print to terminal
+    if (stdoutIndex != -1 && stdoutIndex + 1 < parts.length) {
+        output.append(System.lineSeparator());
+        File outFile = resolveFile(currentDirectory, parts[stdoutIndex + 1]);
+        Files.writeString(outFile.toPath(), output.toString());
+    } else {
+        System.out.println(output.toString());
+    }
+}
 
 static void executeCommand(String[] parts,File currentDirectory)throws Exception{
-        
-    int redirectIndex = findOutputRedirect(parts);
+    int stdoutIndex = findOutputRedirect(parts);
+    int stderrIndex = findErrorRedirect(parts);
 
-    if (redirectIndex == -1) {
-        //parts[0] = executablePath;
-        ProcessBuilder pb = new ProcessBuilder(parts);
-        pb.directory(currentDirectory);
-        pb.inheritIO();
-        
-        Process process = pb.start();
-        process.waitFor();
-        return;
-    }
-    if (redirectIndex + 1 >= parts.length) {
-        System.out.println("Missing output file");
-        return;
-    }
-    String outputFile = parts[redirectIndex + 1];
-        // Keep only command + arguments before >
-    String[] commandParts = Arrays.copyOf(parts, redirectIndex);
+    // Determine where actual command arguments end
+    int endOfArgs = parts.length;
+    if (stdoutIndex != -1) endOfArgs = Math.min(endOfArgs, stdoutIndex);
+    if (stderrIndex != -1) endOfArgs = Math.min(endOfArgs, stderrIndex);
 
-        // Use actual executable path
-    //commandParts[0] = executablePath;
-
+    String[] commandParts = Arrays.copyOf(parts, endOfArgs);
     ProcessBuilder pb = new ProcessBuilder(commandParts);
     pb.directory(currentDirectory);
-    pb.redirectOutput(resolveFile(currentDirectory, outputFile));
-    pb.redirectError(ProcessBuilder.Redirect.INHERIT);
+
+    // Standard Output Redirection
+    if (stdoutIndex != -1 && stdoutIndex + 1 < parts.length) {
+        pb.redirectOutput(resolveFile(currentDirectory, parts[stdoutIndex + 1]));
+    } else {
+        pb.redirectOutput(ProcessBuilder.Redirect.INHERIT);
+    }
+
+    // Standard Error Redirection
+    if (stderrIndex != -1 && stderrIndex + 1 < parts.length) {
+        pb.redirectError(resolveFile(currentDirectory, parts[stderrIndex + 1]));
+    } else {
+        pb.redirectError(ProcessBuilder.Redirect.INHERIT);
+    }
 
     Process process = pb.start();
     process.waitFor();
