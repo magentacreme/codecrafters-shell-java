@@ -64,8 +64,19 @@ public class Main {
                 case "pwd" -> System.out.println(currentDirectory.getAbsolutePath());
 
                 case "cd" -> {
+                    if(parts.length < 2) {
+                        break;
+                    }
+
                     String path = parts[1];
-                    File dir = new File(path);
+                    
+                    File dir;
+                    if(path.startsWith("/")){
+                        dir = new File(path);
+                    }else {
+                        dir = new File(currentDirectory, path);
+                    }
+
                     if(dir.exists() && dir.isDirectory()) {
                         currentDirectory = dir.getCanonicalFile();
                     }else {
