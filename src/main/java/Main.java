@@ -11,14 +11,21 @@ public class Main {
     StringBuilder current = new StringBuilder();
 
     boolean inSingleQuote = false;
+    boolean inDoubleQuote = false;
 
     for (int i = 0; i < input.length(); i++) {
 
         char c = input.charAt(i);
 
-        if (c == '\'') {inSingleQuote = !inSingleQuote;}//toggle single quote state
+        if (c == '\''||c=='"') {
+            if (c == '\'') {
+                inSingleQuote = !inSingleQuote;
+            } else {
+                inDoubleQuote = !inDoubleQuote;
+            }
+        }
         
-        else if (Character.isWhitespace(c) && !inSingleQuote) {
+        else if (Character.isWhitespace(c) && !inSingleQuote && !inDoubleQuote) {
             if (current.length() > 0) {
                 arguments.add(current.toString());
                 current.setLength(0);
