@@ -7,10 +7,13 @@ import java.util.Set;
 
 public class Main {
 
-    static final Set<String> builtins =
-            Set.of("exit", "echo", "type", "pwd", "cd");
+static final Set<String> builtins =Set.of("exit", "echo", "type", "pwd", "cd");
 
-    static String[] parseInput(String input) {
+static File resolveFile(File currentDirectory, String path) {
+    File file = new File(path);
+    return file.isAbsolute() ? file : new File(currentDirectory, path);
+}
+static String[] parseInput(String input) {
         ArrayList<String> arguments = new ArrayList<>();
         StringBuilder current = new StringBuilder();
 
@@ -100,7 +103,7 @@ public class Main {
         return arguments.toArray(new String[0]);
     }
 
-    static int findOutputRedirect(String[] parts) {
+static int findOutputRedirect(String[] parts) {
         for (int i = 0; i < parts.length; i++) {
             if (parts[i].equals(">") || parts[i].equals("1>")) {
                 return i;
@@ -109,13 +112,10 @@ public class Main {
         return -1;
     }
 
-    static void executeEcho(
-            String[] parts,
-            File currentDirectory
-    ) throws Exception {
-        int redirectIndex = findOutputRedirect(parts);
+static void executeEcho(String[] parts,File currentDirectory)throws Exception{
+        
+    int redirectIndex = findOutputRedirect(parts);
 
-        // No redirection
         if (redirectIndex == -1) {
             for (int i = 1; i < parts.length; i++) {
                 if (i > 1) {
@@ -143,61 +143,50 @@ public class Main {
             }
             output.append(parts[i]);
         }
-
         output.append(System.lineSeparator());
 
-        File file = new File(currentDirectory, outputFile);
-
+        File file = resolveFile(currentDirectory, outputFile);
         // > overwrites existing file
         Files.writeString(file.toPath(), output.toString());
     }
 
-    static void executeCommand(
-            String[] parts,
-            File currentDirectory,
-            String executablePath
-    ) throws Exception {
-        int redirectIndex = findOutputRedirect(parts);
-
-        if (redirectIndex == -1) {
-            parts[0] = executablePath;
-
-            ProcessBuilder pb = new ProcessBuilder(parts);
-            pb.directory(currentDirectory);
-            pb.inheritIO();
-
-            Process process = pb.start();
-            process.waitFor();
-            return;
-        }
-
-        if (redirectIndex + 1 >= parts.length) {
-            System.out.println("Missing output file");
-            return;
-        }
-
-        String outputFile = parts[redirectIndex + 1];
-
-        // Keep only command + arguments before >
-        String[] commandParts = Arrays.copyOf(parts, redirectIndex);
-
-        // Use actual executable path
-        commandParts[0] = executablePath;
-
-        ProcessBuilder pb = new ProcessBuilder(commandParts);
+static void executeCommand(String[] parts,File currentDirectory,String executablePath)throws Exception{
+        
+    int redirectIndex = findOutputRedirect(parts);
+    if (redirectIndex == -1) {
+        parts[0] = executablePath;
+        ProcessBuilder pb = new ProcessBuilder(parts);
         pb.directory(currentDirectory);
-
-        // stdout -> file
-        pb.redirectOutput(new File(currentDirectory, outputFile));
-
-        // stderr -> terminal
-        pb.redirectError(ProcessBuilder.Redirect.INHERIT);
-
+        pb.inheritIO();
         Process process = pb.start();
         process.waitFor();
+        return;
     }
+    if (redirectIndex + 1 >= parts.length) {
+        System.out.println("Missing output file");
+        return;
+    }
+    String outputFile = parts[redirectIndex + 1];
+        // Keep only command + arguments before >
+    String[] commandParts = Arrays.copyOf(parts, redirectIndex);
 
-    static String findExecutable(String command) {
+        // Use actual executable path
+    commandParts[0] = executablePath;
+
+    ProcessBuilder pb = new ProcessBuilder(commandParts);
+    pb.directory(currentDirectory);
+
+        // stdout -> file
+    pb.redirectOutput(resolveFile(currentDirectory, outputFile));
+
+        // stderr -> terminal
+    pb.redirectError(ProcessBuilder.Redirect.INHERIT);
+
+    Process process = pb.start();
+    process.waitFor();
+}
+
+static String findExecutable(String command) {
         String path = System.getenv("PATH");
 
         if (path == null) {
@@ -217,7 +206,7 @@ public class Main {
         return null;
     }
 
-    public static void main(String[] args) throws Exception {
+public static void main(String[] args) throws Exception {
         Scanner sc = new Scanner(System.in);
         File currentDirectory = new File(System.getProperty("user.dir"));
 
@@ -313,5 +302,4 @@ public class Main {
                 }
             }
         }
-    }
-}
+    }}
