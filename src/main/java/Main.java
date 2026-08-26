@@ -1,11 +1,15 @@
 import java.io.File;
 import java.util.Scanner;
+import java.util.Set;
 
 public class Main {
 
     public static void main(String[] args) throws Exception {
 
         Scanner sc = new Scanner(System.in);
+        Set<String> builtins = Set.of("exit","echo","type","pwd","cd");
+
+        File currentDirectory = new File(System.getProperty("user.dir"));
 
         while (true) {
 
@@ -15,8 +19,11 @@ public class Main {
 
             String[] parts = input.split(" ");
             String command = parts[0];
+
             switch (command) {
+
                 case "exit" -> System.exit(0);
+
                 case "echo" -> {
                     for (int i = 1; i < parts.length; i++) {
                         if (i > 1) {
@@ -31,30 +38,41 @@ public class Main {
                     if (parts.length > 1) {
                         argument = parts[1];
                     }
-                    switch (argument) {
-                        case "exit", "echo", "type", "pwd" ->
-                                System.out.println(
-                                    argument + " is a shell builtin"
-                                );
-                        default -> {
-                            String path = System.getenv("PATH");
-                            String[] dir = path.split(":");
-                            boolean found = false;
-                            for (String d : dir) {
-                                File file = new File(d, argument);
-                                if (file.exists() && file.canExecute()) {
-                                    System.out.println(argument + " is " +file.getAbsolutePath());
-                                    found = true;
-                                    break;
+
+                    if (builtins.contains(argument)) {
+                        System.out.println(argument + " is a shell builtin");
+                    }
+                    else {
+                    String path = System.getenv("PATH");
+                    String[] dir = path.split(":");
+                    boolean found = false;
+
+                    for (String d : dir) {
+                        File file = new File(d, argument);
+                            if (file.exists() && file.canExecute()) {
+                                System.out.println(argument + " is " +file.getAbsolutePath());
+                                found = true;
+                                break;
                                 }
                             }
                             if (!found) {
                                 System.out.println(argument + ": not found");
                             }
                         }
+                }
+
+                case "pwd" -> System.out.println(currentDirectory.getAbsolutePath());
+
+                case "cd" -> {
+                    String path = parts[1];
+                    File dir = new File(path);
+                    if(dir.exists() && dir.isDirectory()) {
+                        currentDirectory = dir.getCanonicalFile();
+                    }else {
+                        System.out.println("cd: " + path + ": No such file or directory");
                     }
                 }
-                case "pwd" -> System.out.println(System.getProperty("user.dir"));
+
                 default -> {
                     String path = System.getenv("PATH");
                     String[] dir = path.split(":");
@@ -70,6 +88,7 @@ public class Main {
 
                     if (executablePath != null) {
                         ProcessBuilder pb = new ProcessBuilder(parts);
+                        pb.directory(currentDirectory);
                         pb.inheritIO();
                         Process process = pb.start();
                         process.waitFor();
