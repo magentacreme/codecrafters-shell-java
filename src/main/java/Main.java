@@ -3,7 +3,7 @@ public class Main {
     public static void main(String[] args) throws Exception {
         
         Scanner sc = new Scanner(System.in);
-        
+
         while(true){
 
             System.out.print("$ ");
@@ -24,7 +24,7 @@ public class Main {
                     switch (argument) {
                         case "exit", "echo", "type" ->
                                 System.out.println(argument + " is a shell builtin");
-                        default -> System.out.println(argument + ": command not found");
+                        default -> System.out.println(argument + ": not found");
                     }
                 }
                 default->System.out.println(input + ": command not found");
