@@ -4,72 +4,83 @@ import java.util.Set;
 
 public class Main {
 
-    static String[] parseInput(String input) {
+static String[] parseInput(String input) {
 
-    java.util.ArrayList<String> arguments = new java.util.ArrayList<>();
+    java.util.ArrayList<String> arguments =
+            new java.util.ArrayList<>();
 
     StringBuilder current = new StringBuilder();
 
     boolean inSingleQuote = false;
     boolean inDoubleQuote = false;
+    boolean argumentStarted = false;
 
     for (int i = 0; i < input.length(); i++) {
-
         char c = input.charAt(i);
-
         // Inside single quotes
         if (inSingleQuote) {
+            argumentStarted = true;
             if (c == '\'') {
                 inSingleQuote = false;
             } else {
                 current.append(c);
             }
-
         }
         // Inside double quotes
         else if (inDoubleQuote) {
-
-            if (c == '"') {
-                inDoubleQuote = false;
-            } else {
-                current.append(c);
+            argumentStarted = true;
+            switch (c) {
+                case '\\' -> {
+                    if (i + 1 < input.length()) {
+                        char next = input.charAt(i + 1);
+                        if (next == '"' || next == '\\') {
+                            current.append(next);
+                            i++;
+                        } else {
+                            current.append('\\');
+                        }
+                    } else {
+                        current.append('\\');
+                    }
+                }
+                case '"' -> inDoubleQuote = false;
+                default -> current.append(c);
             }
-
         }
         // Outside quotes
         else {
-            // Backslash escapes the next character
             if (c == '\\') {
+                argumentStarted = true;
                 if (i + 1 < input.length()) {
                     i++;
                     current.append(input.charAt(i));
                 }
             }
-            // Start single quote
             else if (c == '\'') {
+                argumentStarted = true;
                 inSingleQuote = true;
             }
-            // Start double quote
             else if (c == '"') {
+                argumentStarted = true;
                 inDoubleQuote = true;
             }
-            // Whitespace separates arguments
             else if (Character.isWhitespace(c)) {
-                if (current.length() > 0) {
+                if (argumentStarted) {
                     arguments.add(current.toString());
                     current.setLength(0);
+                    argumentStarted = false;
                 }
             }
-            // Normal character
             else {
+                argumentStarted = true;
                 current.append(c);
             }
         }
     }
-    // Add the last argument
-    if (current.length() > 0) {
+    if (argumentStarted) {
         arguments.add(current.toString());
     }
+
     return arguments.toArray(new String[0]);
 }    public static void main(String[] args) throws Exception {
 
