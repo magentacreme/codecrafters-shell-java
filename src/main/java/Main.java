@@ -32,7 +32,7 @@ public class Main {
                         argument = parts[1];
                     }
                     switch (argument) {
-                        case "exit", "echo", "type" ->
+                        case "exit", "echo", "type", "pwd" ->
                                 System.out.println(
                                     argument + " is a shell builtin"
                                 );
