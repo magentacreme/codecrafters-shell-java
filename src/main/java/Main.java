@@ -71,7 +71,11 @@ public class Main {
                     String path = parts[1];
                     
                     File dir;
-                    if(path.startsWith("/")){
+                    if(path.equals("~")) {
+                        String Home = System.getenv("HOME");
+                        dir = new File(Home);
+                    } 
+                    else if(path.startsWith("/")){
                         dir = new File(path);
                     }else {
                         dir = new File(currentDirectory, path);
