@@ -5,12 +5,11 @@ public class Main {
 
         String input ="";
 
-        while(input.equals("exit") == false){
-            System.out.print("$ ");
+        do{
+        System.out.print("$ ");
 
             input = sc.nextLine();
-            System.out.println(input+": command not found");
-        }
-       
+            System.out.println(input+": command not found");}
+        while(input.equals("exit") == false);
     }
 }
