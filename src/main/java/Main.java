@@ -150,7 +150,7 @@ static void executeEcho(String[] parts,File currentDirectory)throws Exception{
         Files.writeString(file.toPath(), output.toString());
     }
 
-static void executeCommand(String[] parts,File currentDirectory,String executablePath)throws Exception{
+static void executeCommand(String[] parts,File currentDirectory)throws Exception{
         
     int redirectIndex = findOutputRedirect(parts);
 
@@ -293,7 +293,7 @@ public static void main(String[] args) throws Exception {
                 default -> {
                     String executablePath = findExecutable(command);
                     if (executablePath != null) {
-                        executeCommand(parts, currentDirectory, executablePath);
+                        executeCommand(parts, currentDirectory);
                     } else {
                         System.out.println(command + ": command not found");
                     }
