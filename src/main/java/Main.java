@@ -17,25 +17,61 @@ public class Main {
 
         char c = input.charAt(i);
 
-        if (c == '\''&& !inDoubleQuote) {inSingleQuote = !inSingleQuote;}//toggle single quote state
-        else if (c == '"'&& !inSingleQuote) {inDoubleQuote = !inDoubleQuote;}//toggle double quote state
-        else if (Character.isWhitespace(c) && !inSingleQuote && !inDoubleQuote) {
-            if (current.length() > 0) {
-                arguments.add(current.toString());
-                current.setLength(0);
+        // Inside single quotes
+        if (inSingleQuote) {
+            if (c == '\'') {
+                inSingleQuote = false;
+            } else {
+                current.append(c);
             }
-        } else {
-            current.append(c);
+
+        }
+        // Inside double quotes
+        else if (inDoubleQuote) {
+
+            if (c == '"') {
+                inDoubleQuote = false;
+            } else {
+                current.append(c);
+            }
+
+        }
+        // Outside quotes
+        else {
+            // Backslash escapes the next character
+            if (c == '\\') {
+                if (i + 1 < input.length()) {
+                    i++;
+                    current.append(input.charAt(i));
+                }
+            }
+            // Start single quote
+            else if (c == '\'') {
+                inSingleQuote = true;
+            }
+            // Start double quote
+            else if (c == '"') {
+                inDoubleQuote = true;
+            }
+            // Whitespace separates arguments
+            else if (Character.isWhitespace(c)) {
+                if (current.length() > 0) {
+                    arguments.add(current.toString());
+                    current.setLength(0);
+                }
+            }
+            // Normal character
+            else {
+                current.append(c);
+            }
         }
     }
-
+    // Add the last argument
     if (current.length() > 0) {
         arguments.add(current.toString());
     }
-
     return arguments.toArray(new String[0]);
-}
-    public static void main(String[] args) throws Exception {
+}    public static void main(String[] args) throws Exception {
 
         Scanner sc = new Scanner(System.in);
         Set<String> builtins = Set.of("exit","echo","type","pwd","cd");
