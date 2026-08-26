@@ -4,6 +4,36 @@ import java.util.Set;
 
 public class Main {
 
+    static String[] parseInput(String input) {
+
+    java.util.ArrayList<String> arguments = new java.util.ArrayList<>();
+
+    StringBuilder current = new StringBuilder();
+
+    boolean inSingleQuote = false;
+
+    for (int i = 0; i < input.length(); i++) {
+
+        char c = input.charAt(i);
+
+        if (c == '\'') {inSingleQuote = !inSingleQuote;}//toggle single quote state
+        
+        else if (Character.isWhitespace(c) && !inSingleQuote) {
+            if (current.length() > 0) {
+                arguments.add(current.toString());
+                current.setLength(0);
+            }
+        } else {
+            current.append(c);
+        }
+    }
+
+    if (current.length() > 0) {
+        arguments.add(current.toString());
+    }
+
+    return arguments.toArray(new String[0]);
+}
     public static void main(String[] args) throws Exception {
 
         Scanner sc = new Scanner(System.in);
@@ -17,7 +47,7 @@ public class Main {
 
             String input = sc.nextLine();
 
-            String[] parts = input.split(" ");
+            String[] parts = parseInput(input);
             String command = parts[0];
 
             switch (command) {
@@ -114,4 +144,6 @@ public class Main {
             }
         }
     }
+
+    
 }
