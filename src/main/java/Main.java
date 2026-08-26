@@ -54,6 +54,7 @@ public class Main {
                         }
                     }
                 }
+                case "pwd" -> System.out.println(System.getProperty("user.dir"));
                 default -> {
                     String path = System.getenv("PATH");
                     String[] dir = path.split(":");
