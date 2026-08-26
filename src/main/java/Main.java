@@ -10,7 +10,13 @@ public class Main {
             if(input.equals("exit")){
                 System.exit(0);
             }
-            System.out.println(input+": command not found");
+            else if(input.startsWith("echo ")){
+                String message = input.substring(5);
+                System.out.println(message);
+            }
+            else{
+                System.out.println(input+": command not found");
+            }
         }
        
     }
