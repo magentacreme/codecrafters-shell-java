@@ -12,7 +12,7 @@ public final class CommandParser {
     while (true) {
 
         int c = System.in.read();
-
+        boolean found = false;
         // Enter
         if (c == '\n') {
             System.out.println();
@@ -33,8 +33,12 @@ public final class CommandParser {
                     System.out.print(" ");
                     input.append(remaining);
                     input.append(" ");
+                    found = true;
                     break;
                 }
+            }
+            if(!found) {
+                System.out.print("\007");
             }
             continue;
         }
