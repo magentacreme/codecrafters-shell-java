@@ -2,231 +2,368 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.Set;
 
-
 public final class CommandParser {
+
     private CommandParser() {}
-
-    public static String longestCommonPrefix(ArrayList<String> strings) {
-
-    if (strings.isEmpty()) {
-        return "";
-    }
-
-    String prefix = strings.get(0);
-
-    for (int i = 1; i < strings.size(); i++) {
-
-        String current = strings.get(i);
-
-        int j = 0;
-
-        while (j < prefix.length()
-                && j < current.length()
-                && prefix.charAt(j) == current.charAt(j)) {
-
-            j++;
-        }
-
-        prefix = prefix.substring(0, j);
-
-        if (prefix.isEmpty()) {
-            break;
-        }
-    }
-
-    return prefix;
-}
 
     public static String readCommand(Set<String> builtins) throws Exception {
 
-    StringBuilder input = new StringBuilder();
+        StringBuilder input = new StringBuilder();
 
-    // boolean multipleMatches = false;
+        // True when the previous TAB had multiple matches
+        boolean waitingForSecondTab = false;
 
-    while (true) {
-        int c = System.in.read();
-        //boolean found = false;
-        // Enter
-        if (c == '\n') {
-            System.out.println();
-            return input.toString();
-        }
+        while (true) {
 
-        if (c == '\r') {
-            continue;
-        }
+            int c = System.in.read();
 
-if (c == '\t') {
-    String current = input.toString();
-    ArrayList<String> matches = new ArrayList<>();
+            // Enter
+            if (c == '\n') {
+                System.out.println();
+                return input.toString();
+            }
 
-    for (String builtin : builtins) {
-
-        if (builtin.startsWith(current)) {
-            matches.add(builtin);
-        }
-    }
-
-    String path = System.getenv("PATH");
-
-    if (path != null) {
-
-        String[] directories = path.split(":");
-
-        for (String directory : directories) {
-
-            File dir = new File(directory);
-            File[] files = dir.listFiles();
-
-            if (files == null) {
+            // Ignore carriage return
+            if (c == '\r') {
                 continue;
             }
 
-            for (File file : files) {
+            // TAB
+            if (c == '\t') {
 
-                if (file.isFile()
-                        && file.canExecute()
-                        && file.getName().startsWith(current)
-                        && !matches.contains(file.getName())) {
+                String current = input.toString();
 
-                    matches.add(file.getName());
+                ArrayList<String> matches =
+                        findMatches(current, builtins);
+
+                // -------------------------
+                // No matches
+                // -------------------------
+                if (matches.isEmpty()) {
+
+                    System.out.print("\007");
+
+                    waitingForSecondTab = false;
+                    continue;
+                }
+
+                // -------------------------
+                // One match
+                // -------------------------
+                if (matches.size() == 1) {
+
+                    String completion = matches.get(0);
+
+                    String remaining =
+                            completion.substring(current.length());
+
+                    System.out.print(remaining);
+                    System.out.print(" ");
+
+                    input.append(remaining);
+                    input.append(" ");
+
+                    waitingForSecondTab = false;
+                    continue;
+                }
+
+                // -------------------------
+                // Multiple matches
+                // -------------------------
+
+                String commonPrefix =
+                        longestCommonPrefix(matches);
+
+                // Can extend the current input
+                if (commonPrefix.length() > current.length()) {
+
+                    String remaining =
+                            commonPrefix.substring(current.length());
+
+                    System.out.print(remaining);
+
+                    input.append(remaining);
+
+                    // We have not printed options yet
+                    waitingForSecondTab = false;
+                }
+
+                // Can't extend any further
+                else {
+
+                    // First TAB
+                    if (!waitingForSecondTab) {
+
+                        System.out.print("\007");
+
+                        waitingForSecondTab = true;
+                    }
+
+                    // Second TAB
+                    else {
+
+                        System.out.println();
+
+                        for (int i = 0; i < matches.size(); i++) {
+
+                            if (i > 0) {
+                                System.out.print("  ");
+                            }
+
+                            System.out.print(matches.get(i));
+                        }
+
+                        System.out.println();
+
+                        System.out.print("$ ");
+                        System.out.print(current);
+
+                        waitingForSecondTab = false;
+                    }
+                }
+
+                continue;
+            }
+
+            // Backspace
+            if (c == 127 || c == 8) {
+
+                if (input.length() > 0) {
+
+                    input.deleteCharAt(input.length() - 1);
+
+                    System.out.print("\b \b");
+                }
+
+                waitingForSecondTab = false;
+                continue;
+            }
+
+            // Normal character
+            input.append((char) c);
+            System.out.print((char) c);
+
+            // Typing anything resets the double-TAB state
+            waitingForSecondTab = false;
+        }
+    }
+
+    private static ArrayList<String> findMatches(
+            String prefix,
+            Set<String> builtins) {
+
+        ArrayList<String> matches = new ArrayList<>();
+
+        // Builtins
+        for (String builtin : builtins) {
+
+            if (builtin.startsWith(prefix)) {
+                matches.add(builtin);
+            }
+        }
+
+        // PATH executables
+        String path = System.getenv("PATH");
+
+        if (path != null) {
+
+            String[] directories = path.split(":");
+
+            for (String directory : directories) {
+
+                File dir = new File(directory);
+
+                File[] files = dir.listFiles();
+
+                if (files == null) {
+                    continue;
+                }
+
+                for (File file : files) {
+
+                    if (file.isFile()
+                            && file.canExecute()
+                            && file.getName().startsWith(prefix)
+                            && !matches.contains(file.getName())) {
+
+                        matches.add(file.getName());
+                    }
                 }
             }
         }
+
+        matches.sort(String::compareTo);
+
+        return matches;
     }
 
-    // Alphabetical order
-    matches.sort(String::compareTo);
+    private static String longestCommonPrefix(
+            ArrayList<String> strings) {
 
-    if (matches.isEmpty()) {
-
-        System.out.print("\007");
-
-    }
-
-    else if (matches.size() == 1) {
-
-        String completion = matches.get(0);
-
-        String remaining =
-                completion.substring(current.length());
-
-        System.out.print(remaining);
-        System.out.print(" ");
-
-        input.append(remaining);
-        input.append(" ");
-
-    }
-
-    else {
-
-        String commonPrefix =
-                longestCommonPrefix(matches);
-
-        // There is more text that can be completed
-        if (commonPrefix.length() > current.length()) {
-
-            String remaining =
-                    commonPrefix.substring(current.length());
-
-            System.out.print(remaining);
-
-            input.append(remaining);
-
+        if (strings.isEmpty()) {
+            return "";
         }
 
-        // Nothing more can be completed
-        else {
+        String prefix = strings.get(0);
 
-            System.out.print("\007");
-        }
-    }
+        for (int i = 1; i < strings.size(); i++) {
 
-    continue;
-}
+            String current = strings.get(i);
 
-// Backspace
-        if (c == 127 || c == 8) {
+            int j = 0;
 
-            if (input.length() > 0) {
+            while (j < prefix.length()
+                    && j < current.length()
+                    && prefix.charAt(j) == current.charAt(j)) {
 
-                input.deleteCharAt(input.length() - 1);
-
-                System.out.print("\b \b");
+                j++;
             }
 
-            continue;
+            prefix = prefix.substring(0, j);
+
+            if (prefix.isEmpty()) {
+                break;
+            }
         }
 
-        // Normal character
-        input.append((char) c);
-        System.out.print((char) c);
+        return prefix;
     }
-}
+
     public static String[] parse(String input) {
 
-        ArrayList<String> arguments = new ArrayList<>();
-        StringBuilder current = new StringBuilder();
+        ArrayList<String> arguments =
+                new ArrayList<>();
+
+        StringBuilder current =
+                new StringBuilder();
+
         boolean inSingleQuote = false;
         boolean inDoubleQuote = false;
         boolean argumentStarted = false;
-        //cd java/src/main/java
+
         for (int i = 0; i < input.length(); i++) {
+
             char c = input.charAt(i);
 
+            // -------------------------
+            // Single quotes
+            // -------------------------
             if (inSingleQuote) {
+
                 argumentStarted = true;
+
                 if (c == '\'') {
                     inSingleQuote = false;
                 } else {
                     current.append(c);
                 }
-            } else if (inDoubleQuote) {
+            }
+
+            // -------------------------
+            // Double quotes
+            // -------------------------
+            else if (inDoubleQuote) {
+
                 argumentStarted = true;
+
                 switch (c) {
+
                     case '\\' -> {
+
                         if (i + 1 < input.length()) {
-                            char next = input.charAt(i + 1);
+
+                            char next =
+                                    input.charAt(i + 1);
+
+                            // Only \" and \\ are special
                             if (next == '"' || next == '\\') {
+
                                 current.append(next);
                                 i++;
+
                             } else {
+
                                 current.append('\\');
                             }
+
                         } else {
+
                             current.append('\\');
                         }
                     }
-                    case '"' -> inDoubleQuote = false;
-                    default -> current.append(c);
+
+                    case '"' ->
+                            inDoubleQuote = false;
+
+                    default ->
+                            current.append(c);
                 }
-            } else if (c == '\\') {
-                argumentStarted = true;
-                if (i + 1 < input.length()) {
-                    i++;
-                    current.append(input.charAt(i));
+            }
+
+            // -------------------------
+            // Outside quotes
+            // -------------------------
+            else {
+
+                // Backslash
+                if (c == '\\') {
+
+                    argumentStarted = true;
+
+                    if (i + 1 < input.length()) {
+
+                        i++;
+
+                        current.append(
+                                input.charAt(i)
+                        );
+                    }
                 }
-            } else if (c == '\'') {
-                argumentStarted = true;
-                inSingleQuote = true;
-            } else if (c == '"') {
-                argumentStarted = true;
-                inDoubleQuote = true;
-            } else if (Character.isWhitespace(c)) {
-                if (argumentStarted) {
-                    arguments.add(current.toString());
-                    current.setLength(0);
-                    argumentStarted = false;
+
+                // Single quote
+                else if (c == '\'') {
+
+                    argumentStarted = true;
+                    inSingleQuote = true;
                 }
-            } else {
-                argumentStarted = true;
-                current.append(c);
+
+                // Double quote
+                else if (c == '"') {
+
+                    argumentStarted = true;
+                    inDoubleQuote = true;
+                }
+
+                // Whitespace
+                else if (Character.isWhitespace(c)) {
+
+                    if (argumentStarted) {
+
+                        arguments.add(
+                                current.toString()
+                        );
+
+                        current.setLength(0);
+
+                        argumentStarted = false;
+                    }
+                }
+
+                // Normal character
+                else {
+
+                    argumentStarted = true;
+
+                    current.append(c);
+                }
             }
         }
 
         if (argumentStarted) {
-            arguments.add(current.toString());
+
+            arguments.add(
+                    current.toString()
+            );
         }
 
         return arguments.toArray(String[]::new);
