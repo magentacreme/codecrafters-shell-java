@@ -21,19 +21,27 @@ public final class CommandParser {
         // TAB
         // TAB
         if (c == '\t') {
-            String current = input.toString();
-            for (String completion : builtins) {
 
-                if (completion.startsWith(current)) {
-                    System.out.print("\r$ " + completion + " ");
-                    input.setLength(0);
-                    input.append(completion);
-                    input.append(" ");
-                    break;
-                }
+    String current = input.toString();
+
+        for (String completion : builtins) {
+
+            if (completion.startsWith(current)) {
+
+                String remaining = completion.substring(current.length());
+
+                System.out.print(remaining);
+                System.out.print(" ");
+
+                input.append(remaining);
+                input.append(" ");
+
+                break;
             }
-        continue;
         }
+
+        continue;
+    }   
         // Backspace
         if (c == 127 || c == 8) {
             if (input.length() > 0) {
