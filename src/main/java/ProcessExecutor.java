@@ -7,6 +7,14 @@ public final class ProcessExecutor {
     private ProcessExecutor() {
     }
 
+   public static void enableRawMode() throws Exception {
+    new ProcessBuilder("sh","-c","stty -icanon -echo").inheritIO().start().waitFor();
+}
+    
+   public static void disableRawMode() throws Exception {
+    new ProcessBuilder("sh","-c","stty sane").inheritIO().start().waitFor();
+}
+
     public static void executeEcho(String[] parts, File currentDirectory) throws Exception {
         int stdoutIndex = findOutputRedirect(parts);
         int stderrIndex = findErrorRedirect(parts);

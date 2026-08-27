@@ -10,52 +10,53 @@ public final class CommandParser {
     StringBuilder input = new StringBuilder();
 
     while (true) {
+
         int c = System.in.read();
+
         // Enter
         if (c == '\n') {
             System.out.println();
             return input.toString();
         }
+
         // Ignore carriage return
-        if (c == '\r') {continue;}
-        // TAB
+        if (c == '\r') {
+            continue;
+        }
         // TAB
         if (c == '\t') {
-
-    String current = input.toString();
-
-        for (String completion : builtins) {
-
-            if (completion.startsWith(current)) {
-
-                String remaining = completion.substring(current.length());
-
-                System.out.print(remaining);
-                System.out.print(" ");
-
-                input.append(remaining);
-                input.append(" ");
-
-                break;
-            }
-        }
-
-        continue;
-    }   
-        // Backspace
-        if (c == 127 || c == 8) {
-            if (input.length() > 0) {
-                input.deleteCharAt(input.length() - 1);
-                System.out.print("\b \b");
+            String current = input.toString();
+            for (String completion : builtins) {
+                if (completion.startsWith(current)) {
+                    String remaining =completion.substring(current.length());
+                    System.out.print(remaining);
+                    System.out.print(" ");
+                    input.append(remaining);
+                    input.append(" ");
+                    break;
+                }
             }
             continue;
         }
+
+        // Backspace
+        if (c == 127 || c == 8) {
+
+            if (input.length() > 0) {
+
+                input.deleteCharAt(input.length() - 1);
+
+                System.out.print("\b \b");
+            }
+
+            continue;
+        }
+
         // Normal character
         input.append((char) c);
         System.out.print((char) c);
     }
 }
-
     public static String[] parse(String input) {
 
         ArrayList<String> arguments = new ArrayList<>();

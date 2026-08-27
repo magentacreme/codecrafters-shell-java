@@ -5,6 +5,18 @@ public class Main {
     static final Set<String> builtins = Set.of("exit", "echo", "type", "pwd", "cd");
 
     public static void main(String[] args) throws Exception {
+        
+           ProcessExecutor.enableRawMode();
+
+    Runtime.getRuntime().addShutdownHook(
+        new Thread(() -> {
+            try {
+                ProcessExecutor.disableRawMode();
+            } catch (Exception ignored) {
+            }
+        })
+    );
+        
         File currentDirectory = new File(System.getProperty("user.dir"));
 
         while (true) {
