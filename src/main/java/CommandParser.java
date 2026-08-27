@@ -19,19 +19,20 @@ public final class CommandParser {
         // Ignore carriage return
         if (c == '\r') {continue;}
         // TAB
+        // TAB
         if (c == '\t') {
             String current = input.toString();
             for (String completion : builtins) {
+
                 if (completion.startsWith(current)) {
-                    String remaining = completion.substring(current.length());
-                    System.out.print(remaining);
-                    input.append(remaining);
-                    System.out.print(" ");
+                    System.out.print("\r$ " + completion + " ");
+                    input.setLength(0);
+                    input.append(completion);
                     input.append(" ");
                     break;
                 }
             }
-            continue;
+        continue;
         }
         // Backspace
         if (c == 127 || c == 8) {
