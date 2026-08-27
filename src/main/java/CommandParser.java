@@ -10,6 +10,8 @@ public final class CommandParser {
 
     StringBuilder input = new StringBuilder();
 
+    boolean multipleMatches = false;
+
     while (true) {
 
         int c = System.in.read();
@@ -27,61 +29,47 @@ public final class CommandParser {
         // TAB
         // TAB
 if (c == '\t') {
-
     String current = input.toString();
-    String completionFound = null;
+    ArrayList<String> matches = new ArrayList<>();
 
-    // 1. Check builtins
     for (String builtin : builtins) {
 
         if (builtin.startsWith(current)) {
-            completionFound = builtin;
-            break;
+            matches.add(builtin);
         }
     }
 
-    // 2. If no builtin matched, search PATH
-    if (completionFound == null) {
+    String path = System.getenv("PATH");
 
-        String path = System.getenv("PATH");
-
-        if (path != null) {
-
-            String[] directories = path.split(":");
-
-            for (String directory : directories) {
-
-                File dir = new File(directory);
-
-                File[] files = dir.listFiles();
-
-                if (files == null) {
-                    continue;
-                }
-
-                for (File file : files) {
-
-                    if (file.isFile()
-                            && file.canExecute()
-                            && file.getName().startsWith(current)) {
-
-                        completionFound = file.getName();
-                        break;
-                    }
-                }
-
-                if (completionFound != null) {
-                    break;
+    if (path != null) {
+        String[] directories = path.split(":");
+        for (String directory : directories) {
+            File dir = new File(directory);
+            File[] files = dir.listFiles();
+            if (files == null) {
+                continue;
+            }
+            for (File file : files) {
+                if (file.isFile()&& file.canExecute()&& file.getName().startsWith(current)&& !matches.contains(file.getName())){
+                    matches.add(file.getName());
                 }
             }
         }
     }
+    // Sort alphabetically
+    matches.sort(String::compareTo);
 
-    // 3. Completion found
-    if (completionFound != null) {
+    if (matches.isEmpty()) {
+        System.out.print("\007");
+        multipleMatches = false;
+    }
+
+    else if (matches.size() == 1) {
+
+        String completion = matches.get(0);
 
         String remaining =
-                completionFound.substring(current.length());
+                completion.substring(current.length());
 
         System.out.print(remaining);
         System.out.print(" ");
@@ -89,10 +77,41 @@ if (c == '\t') {
         input.append(remaining);
         input.append(" ");
 
-    } else {
+        multipleMatches = false;
+    }
 
-        // 4. Nothing matched -> bell
-        System.out.print("\007");
+    else {
+
+        if (!multipleMatches) {
+
+            // First TAB
+            System.out.print("\007");
+
+            multipleMatches = true;
+
+        } else {
+
+            // Second TAB
+
+            System.out.println();
+
+            for (int i = 0; i < matches.size(); i++) {
+
+                if (i > 0) {
+                    System.out.print("  ");
+                }
+
+                System.out.print(matches.get(i));
+            }
+
+            System.out.println();
+
+            System.out.print("$ ");
+            System.out.print(current);
+
+            // Keep the original prefix
+            multipleMatches = false;
+        }
     }
 
     continue;
