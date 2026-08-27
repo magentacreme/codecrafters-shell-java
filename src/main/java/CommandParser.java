@@ -1,3 +1,4 @@
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Set;
 
@@ -24,25 +25,78 @@ public final class CommandParser {
             continue;
         }
         // TAB
-        if (c == '\t') {
-            String current = input.toString();
-            for (String completion : builtins) {
-                if (completion.startsWith(current)) {
-                    String remaining =completion.substring(current.length());
-                    System.out.print(remaining);
-                    System.out.print(" ");
-                    input.append(remaining);
-                    input.append(" ");
-                    found = true;
+        // TAB
+if (c == '\t') {
+
+    String current = input.toString();
+    String completionFound = null;
+
+    // 1. Check builtins
+    for (String builtin : builtins) {
+
+        if (builtin.startsWith(current)) {
+            completionFound = builtin;
+            break;
+        }
+    }
+
+    // 2. If no builtin matched, search PATH
+    if (completionFound == null) {
+
+        String path = System.getenv("PATH");
+
+        if (path != null) {
+
+            String[] directories = path.split(":");
+
+            for (String directory : directories) {
+
+                File dir = new File(directory);
+
+                File[] files = dir.listFiles();
+
+                if (files == null) {
+                    continue;
+                }
+
+                for (File file : files) {
+
+                    if (file.isFile()
+                            && file.canExecute()
+                            && file.getName().startsWith(current)) {
+
+                        completionFound = file.getName();
+                        break;
+                    }
+                }
+
+                if (completionFound != null) {
                     break;
                 }
             }
-            if(!found) {
-                System.out.print("\007");
-            }
-            continue;
         }
+    }
 
+    // 3. Completion found
+    if (completionFound != null) {
+
+        String remaining =
+                completionFound.substring(current.length());
+
+        System.out.print(remaining);
+        System.out.print(" ");
+
+        input.append(remaining);
+        input.append(" ");
+
+    } else {
+
+        // 4. Nothing matched -> bell
+        System.out.print("\007");
+    }
+
+    continue;
+}
         // Backspace
         if (c == 127 || c == 8) {
 
