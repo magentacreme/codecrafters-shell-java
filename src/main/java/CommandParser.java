@@ -6,28 +6,56 @@ import java.util.Set;
 public final class CommandParser {
     private CommandParser() {}
 
+    public static String longestCommonPrefix(ArrayList<String> strings) {
+
+    if (strings.isEmpty()) {
+        return "";
+    }
+
+    String prefix = strings.get(0);
+
+    for (int i = 1; i < strings.size(); i++) {
+
+        String current = strings.get(i);
+
+        int j = 0;
+
+        while (j < prefix.length()
+                && j < current.length()
+                && prefix.charAt(j) == current.charAt(j)) {
+
+            j++;
+        }
+
+        prefix = prefix.substring(0, j);
+
+        if (prefix.isEmpty()) {
+            break;
+        }
+    }
+
+    return prefix;
+}
+
     public static String readCommand(Set<String> builtins) throws Exception {
 
     StringBuilder input = new StringBuilder();
 
-    boolean multipleMatches = false;
+    // boolean multipleMatches = false;
 
     while (true) {
-
         int c = System.in.read();
-        boolean found = false;
+        //boolean found = false;
         // Enter
         if (c == '\n') {
             System.out.println();
             return input.toString();
         }
 
-        // Ignore carriage return
         if (c == '\r') {
             continue;
         }
-        // TAB
-        // TAB
+
 if (c == '\t') {
     String current = input.toString();
     ArrayList<String> matches = new ArrayList<>();
@@ -42,26 +70,38 @@ if (c == '\t') {
     String path = System.getenv("PATH");
 
     if (path != null) {
+
         String[] directories = path.split(":");
+
         for (String directory : directories) {
+
             File dir = new File(directory);
             File[] files = dir.listFiles();
+
             if (files == null) {
                 continue;
             }
+
             for (File file : files) {
-                if (file.isFile()&& file.canExecute()&& file.getName().startsWith(current)&& !matches.contains(file.getName())){
+
+                if (file.isFile()
+                        && file.canExecute()
+                        && file.getName().startsWith(current)
+                        && !matches.contains(file.getName())) {
+
                     matches.add(file.getName());
                 }
             }
         }
     }
-    // Sort alphabetically
+
+    // Alphabetical order
     matches.sort(String::compareTo);
 
     if (matches.isEmpty()) {
+
         System.out.print("\007");
-        multipleMatches = false;
+
     }
 
     else if (matches.size() == 1) {
@@ -77,46 +117,36 @@ if (c == '\t') {
         input.append(remaining);
         input.append(" ");
 
-        multipleMatches = false;
     }
 
     else {
 
-        if (!multipleMatches) {
+        String commonPrefix =
+                longestCommonPrefix(matches);
 
-            // First TAB
+        // There is more text that can be completed
+        if (commonPrefix.length() > current.length()) {
+
+            String remaining =
+                    commonPrefix.substring(current.length());
+
+            System.out.print(remaining);
+
+            input.append(remaining);
+
+        }
+
+        // Nothing more can be completed
+        else {
+
             System.out.print("\007");
-
-            multipleMatches = true;
-
-        } else {
-
-            // Second TAB
-
-            System.out.println();
-
-            for (int i = 0; i < matches.size(); i++) {
-
-                if (i > 0) {
-                    System.out.print("  ");
-                }
-
-                System.out.print(matches.get(i));
-            }
-
-            System.out.println();
-
-            System.out.print("$ ");
-            System.out.print(current);
-
-            // Keep the original prefix
-            multipleMatches = false;
         }
     }
 
     continue;
 }
-        // Backspace
+
+// Backspace
         if (c == 127 || c == 8) {
 
             if (input.length() > 0) {
