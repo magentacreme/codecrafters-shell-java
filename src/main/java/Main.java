@@ -1,17 +1,16 @@
 import java.io.File;
-import java.util.Scanner;
 import java.util.Set;
 
 public class Main {
     static final Set<String> builtins = Set.of("exit", "echo", "type", "pwd", "cd");
 
     public static void main(String[] args) throws Exception {
-        Scanner scanner = new Scanner(System.in);
         File currentDirectory = new File(System.getProperty("user.dir"));
 
         while (true) {
             System.out.print("$ ");
-            String input = scanner.nextLine();
+
+            String input = CommandParser.readCommand(builtins);
 
             if (input.isEmpty()) {
                 continue;
@@ -25,7 +24,6 @@ public class Main {
             String command = parts[0];
             switch (command) {
                 case "exit" -> {
-                    scanner.close();
                     System.exit(0);
                 }
                 case "echo" -> ProcessExecutor.executeEcho(parts, currentDirectory);
