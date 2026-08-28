@@ -50,14 +50,14 @@ public class Main {
             }
 
             String[] parts = CommandParser.parse(input);
-                    for (BackgroundJob job : backgroundJobs) {
-                        System.out.printf("[%d]+  %-24s%s%n", job.number, "Running", job.command);
-                    }
             if (parts.length == 0) {
                 continue;
             }
 
             boolean isBackground = parts[parts.length - 1].equals("&");
+                    for (BackgroundJob job : backgroundJobs) {
+                        System.out.printf("[%d]+  %-24s%s%n", job.number, "Running", job.command);
+                    }
             if (isBackground) {
                 parts = Arrays.copyOf(parts, parts.length - 1);
                 if (parts.length == 0) {
