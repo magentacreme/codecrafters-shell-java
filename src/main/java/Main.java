@@ -43,6 +43,7 @@ import command.CommandRegistry;
 import command.CompleteCommand;
 import command.EchoCommand;
 import command.ExitCommand;
+import command.HistoryCommand;
 import command.JobsCommand;
 import command.PathResolver;
 import command.PwdCommand;
@@ -65,6 +66,7 @@ public class Main
     private static AutoCompleteRegistry autoCompleteRegistry;
     private static PathResolver pathResolver;
     private static Environment environment;
+    private static final List<String> history = new ArrayList<>();
 
     public static void main(String[] args) throws Exception
     {
@@ -82,7 +84,8 @@ public class Main
                 new CdCommand(environment),
                 new TypeCommand(commandRegistry, pathResolver),
                 new CompleteCommand(environment, autoCompleteRegistry),
-                new JobsCommand(jobsPrinter)
+                new JobsCommand(jobsPrinter),
+                new HistoryCommand(history)
         );
 
         commands.forEach(commandRegistry::registerBuiltIn);
@@ -267,11 +270,6 @@ public class Main
                                 .collect(Collectors.joining("  "))
                 );
 
-                /*
-                 * Print this explicitly rather than relying on JLine's REDISPLAY,
-                 * because the CodeCrafters test terminal doesn't interpret JLine's
-                 * redraw in quite the same way as a real terminal.
-                 */
                 writer.print("$ " + line);
                 writer.flush();
 
@@ -291,9 +289,7 @@ public class Main
                         "\t"
                 );
 
-        /*
-         * Replace JLine's normal TAB action with ours.
-         */
+
         reader.getKeyMaps()
                 .get(LineReader.MAIN)
                 .bind(
@@ -307,6 +303,7 @@ public class Main
 
             if (!line.trim().isEmpty())
             {
+                history.add(line);
                 parse(line);
             }
         }
