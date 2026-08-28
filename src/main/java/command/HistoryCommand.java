@@ -15,7 +15,14 @@ public class HistoryCommand implements Command
     @Override
     public void execute(List<String> args, PrintStream stdout, PrintStream stderr)
     {
-        for (int i = 0; i < history.size(); i++)
+        int limit = history.size();
+        if (!args.isEmpty())
+        {
+            limit = Integer.parseInt(args.getFirst());
+        }
+
+        int start = Math.max(0, history.size() - limit);
+        for (int i = start; i < history.size(); i++)
         {
             stdout.printf("%5d  %s%n", i + 1, history.get(i));
         }
