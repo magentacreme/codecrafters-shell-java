@@ -157,7 +157,6 @@ public class Main {
 
     List<BackgroundJob> completedJobs = new ArrayList<>();
 
-    // Find jobs that have exited.
     for (BackgroundJob job : backgroundJobs) {
         if (!job.process.isAlive()) {
             job.process.waitFor();
@@ -165,22 +164,14 @@ public class Main {
         }
     }
 
-    // Remove completed jobs from the job table.
+    // Remove completed jobs.
     backgroundJobs.removeAll(completedJobs);
 
-    // Reset markers of remaining jobs.
-    for (BackgroundJob job : backgroundJobs) {
-        job.marker = ' ';
-    }
-
-    // The newest remaining job gets '+'.
-    if (!backgroundJobs.isEmpty()) {
-        backgroundJobs.get(backgroundJobs.size() - 1).marker = '+';
-    }
+    // Do NOT modify markers here.
+    // Existing + and - markers belong to the remaining jobs.
 
     return completedJobs;
 }
-
 private static void printJobStatuses(
         List<BackgroundJob> completedJobs,
         List<BackgroundJob> runningJobs,
