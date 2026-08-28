@@ -360,8 +360,8 @@ public class Main
     private static void parse(String input) throws IOException
     {
         List<String> args = ArgumentParser.parseArgs(input).stream()
-            .map(Main::expandVariables)
-            .toList();
+                .map(Main::expandVariables)
+                .collect(Collectors.toCollection(ArrayList::new));
 
         int pipelineIndex = args.indexOf("|");
         if (pipelineIndex != -1)
