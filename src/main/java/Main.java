@@ -90,8 +90,8 @@ public class Main {
                 }
                 case "pwd" -> System.out.println(currentDirectory.getAbsolutePath());
                 case "jobs" -> {
-                    reapCompletedJobs(backgroundJobs);
-                    printJobStatuses(List.of(), backgroundJobs, true);
+                    List<BackgroundJob> reapedJobs = reapCompletedJobs(backgroundJobs);
+                    printJobStatuses(reapedJobs, backgroundJobs, true);
                 }
                 case "complete" -> {
                     if (parts.length >= 4 && parts[1].equals("-C")) {
