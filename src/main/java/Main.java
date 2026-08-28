@@ -84,6 +84,8 @@ public class Main {
                 case "complete" -> {
                     if (parts.length >= 4 && parts[1].equals("-C")) {
                         completionScripts.put(parts[3], parts[2]);
+                    } else if (parts.length >= 3 && parts[1].equals("-r")) {
+                        completionScripts.remove(parts[2]);
                     } else if (parts.length >= 3 && parts[1].equals("-p")) {
                         String script = completionScripts.get(parts[2]);
                         if (script == null) {
