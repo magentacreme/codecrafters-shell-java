@@ -53,8 +53,11 @@ if (c == '\t') {
                 if (completion == null || completion.isEmpty()) {
                     System.out.print("\007");
                 } else {
-                    System.out.print(completion + " ");
-                    input.append(completion).append(" ");
+                    String remaining = completion.startsWith(currentWord)
+                            ? completion.substring(currentWord.length())
+                            : completion;
+                    System.out.print(remaining + " ");
+                    input.append(remaining).append(" ");
                 }
 
                 waitingForSecondTab = false;
