@@ -23,12 +23,38 @@ public class DeclareCommand implements Command
             int equalsIndex = argument.indexOf('=');
             if (equalsIndex > 0)
             {
+                String name = argument.substring(0, equalsIndex);
+                if (!isValidIdentifier(name))
+                {
+                    stderr.printf("declare: `%s': not a valid identifier%n", argument);
+                    continue;
+                }
+
                 variables.put(
-                        argument.substring(0, equalsIndex),
+                        name,
                         argument.substring(equalsIndex + 1)
                 );
             }
         }
+    }
+
+    private boolean isValidIdentifier(String name)
+    {
+        if (name.isEmpty() || (!Character.isLetter(name.charAt(0)) && name.charAt(0) != '_'))
+        {
+            return false;
+        }
+
+        for (int i = 1; i < name.length(); i++)
+        {
+            char character = name.charAt(i);
+            if (!Character.isLetterOrDigit(character) && character != '_')
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private void printVariable(List<String> args, PrintStream stdout, PrintStream stderr)
