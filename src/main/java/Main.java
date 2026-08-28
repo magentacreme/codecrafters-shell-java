@@ -2,7 +2,6 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -38,9 +37,9 @@ public class Main {
         File currentDirectory = new File(System.getProperty("user.dir"));
         Map<String, String> completionScripts = new HashMap<>();
         List<BackgroundJob> backgroundJobs = new ArrayList<>();
+        int nextJobNumber = 1;
 
         while (true) {
-            reapCompletedJobs(backgroundJobs);
             System.out.print("$ ");
 
             String input = CommandParser.readCommand(builtins, completionScripts);
@@ -87,34 +86,20 @@ public class Main {
                 }
                 case "pwd" -> System.out.println(currentDirectory.getAbsolutePath());
                 case "jobs" -> {
+                    List<BackgroundJob> completedJobs = reapCompletedJobs(backgroundJobs);
                     for (int i = 0; i < backgroundJobs.size(); i++) {
                         BackgroundJob job = backgroundJobs.get(i);
+                        boolean completed = completedJobs.contains(job);
+                        String status = completed ? "Done" : "Running";
                         String marker = i == backgroundJobs.size() - 1
                                 ? "+"
                                 : i == backgroundJobs.size() - 2 ? "-" : " ";
-                        System.out.printf("[%d]%s  %-24s%s%n", job.number, marker, "Running", job.command);
+                        String commandText = completed
+                                ? job.command.replaceAll("\\s*&$", "")
+                                : job.command;
+                        System.out.printf("[%d]%s  %-24s%s%n", job.number, marker, status, commandText);
                     }
-                }
-                case "cd" -> {
-                    if (parts.length < 2) {
-                        continue;
-                    }
-
-                    String path = parts[1];
-                    File directory;
-                    if (path.equals("~")) {
-                        directory = new File(System.getenv("HOME"));
-                    } else if (path.startsWith("/")) {
-                        directory = new File(path);
-                    } else {
-                        directory = new File(currentDirectory, path);
-                    }
-
-                    if (directory.exists() && directory.isDirectory()) {
-                        currentDirectory = directory.getCanonicalFile();
-                    } else {
-                        System.out.println("cd: " + path + ": No such file or directory");
-                    }
+                    backgroundJobs.removeAll(completedJobs);
                 }
                 case "complete" -> {
                     if (parts.length >= 4 && parts[1].equals("-C")) {
@@ -135,9 +120,9 @@ public class Main {
                     if (executablePath != null) {
                         if (isBackground) {
                             Process process = ProcessExecutor.startCommand(parts, currentDirectory);
-                            int jobNumber = nextJobNumber(backgroundJobs);
-                            backgroundJobs.add(new BackgroundJob(jobNumber, process, input.trim()));
-                            System.out.println("[" + jobNumber + "] " + process.pid());
+                            backgroundJobs.add(new BackgroundJob(nextJobNumber, process, input.trim()));
+                            System.out.println("[" + nextJobNumber + "] " + process.pid());
+                            nextJobNumber++;
                         } else {
                             ProcessExecutor.executeCommand(parts, currentDirectory);
                         }
@@ -149,32 +134,14 @@ public class Main {
         }
     }
 
-    private static int nextJobNumber(List<BackgroundJob> backgroundJobs) {
-        int number = 1;
-        while (true) {
-            boolean used = false;
-            for (BackgroundJob job : backgroundJobs) {
-                if (job.number == number) {
-                    used = true;
-                    break;
-                }
-            }
-            if (!used) {
-                return number;
-            }
-            number++;
-        }
-    }
-
-    private static void reapCompletedJobs(List<BackgroundJob> backgroundJobs) throws InterruptedException {
-        Iterator<BackgroundJob> jobs = backgroundJobs.iterator();
-        while (jobs.hasNext()) {
-            BackgroundJob job = jobs.next();
+    private static List<BackgroundJob> reapCompletedJobs(List<BackgroundJob> backgroundJobs) throws InterruptedException {
+        List<BackgroundJob> completedJobs = new ArrayList<>();
+        for (BackgroundJob job : backgroundJobs) {
             if (!job.process.isAlive()) {
                 job.process.waitFor();
-                System.out.printf("[%d]+  %-24s%s%n", job.number, "Done", job.command);
-                jobs.remove();
+                completedJobs.add(job);
             }
         }
+        return completedJobs;
     }
 }
