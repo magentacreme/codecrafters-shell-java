@@ -408,6 +408,22 @@ public class Main
                 continue;
             }
 
+            if (value.charAt(index + 1) == '{')
+            {
+                int closingBrace = value.indexOf('}', index + 2);
+                if (closingBrace != -1)
+                {
+                    String variableName = value.substring(index + 2, closingBrace);
+                    String variableValue = declareCommand.getVariable(variableName);
+                    if (variableValue != null)
+                    {
+                        expanded.append(variableValue);
+                    }
+                    index = closingBrace + 1;
+                    continue;
+                }
+            }
+
             char firstNameCharacter = value.charAt(index + 1);
             if (!Character.isLetter(firstNameCharacter) && firstNameCharacter != '_')
             {
