@@ -52,6 +52,11 @@ public final class ProcessExecutor {
     }
 
     public static void executeCommand(String[] parts, File currentDirectory) throws Exception {
+        Process process = startCommand(parts, currentDirectory);
+        process.waitFor();
+    }
+
+    public static Process startCommand(String[] parts, File currentDirectory) throws Exception {
         int stdoutIndex = findOutputRedirect(parts);
         int stderrIndex = findErrorRedirect(parts);
         int endOfArgs = parts.length;
@@ -83,8 +88,7 @@ public final class ProcessExecutor {
             processBuilder.redirectError(ProcessBuilder.Redirect.INHERIT);
         }
 
-        Process process = processBuilder.start();
-        process.waitFor();
+        return processBuilder.start();
     }
 
     public static String findExecutable(String command) {

@@ -1,4 +1,5 @@
 import java.io.File;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
@@ -21,6 +22,7 @@ public class Main {
         
         File currentDirectory = new File(System.getProperty("user.dir"));
         Map<String, String> completionScripts = new HashMap<>();
+        int nextJobNumber = 1;
 
         while (true) {
             System.out.print("$ ");
@@ -34,6 +36,14 @@ public class Main {
             String[] parts = CommandParser.parse(input);
             if (parts.length == 0) {
                 continue;
+            }
+
+            boolean isBackground = parts[parts.length - 1].equals("&");
+            if (isBackground) {
+                parts = Arrays.copyOf(parts, parts.length - 1);
+                if (parts.length == 0) {
+                    continue;
+                }
             }
 
             String command = parts[0];
@@ -100,7 +110,13 @@ public class Main {
                 default -> {
                     String executablePath = ProcessExecutor.findExecutable(command);
                     if (executablePath != null) {
-                        ProcessExecutor.executeCommand(parts, currentDirectory);
+                        if (isBackground) {
+                            Process process = ProcessExecutor.startCommand(parts, currentDirectory);
+                            System.out.println("[" + nextJobNumber + "] " + process.pid());
+                            nextJobNumber++;
+                        } else {
+                            ProcessExecutor.executeCommand(parts, currentDirectory);
+                        }
                     } else {
                         System.out.println(command + ": command not found");
                     }
