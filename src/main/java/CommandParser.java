@@ -33,24 +33,26 @@ if (c == '\t') {
 
     String current = input.toString();
 
-    // Check whether we are completing a command
-    // or a filename argument.
     int lastSpace = current.lastIndexOf(' ');
 
     ArrayList<String> matches;
+    String partial;
 
+    // Command completion
     if (lastSpace == -1) {
 
-        // Command completion
+        partial = current;
+
         matches = findMatches(current, builtins);
 
-    } else {
+    }
 
-        // Filename completion
-        String filenamePrefix =
-                current.substring(lastSpace + 1);
+    // Filename completion
+    else {
 
-        matches = findFilenameMatches(filenamePrefix);
+        partial = current.substring(lastSpace + 1);
+
+        matches = findFilenameMatches(partial);
     }
 
     // No matches
@@ -68,16 +70,8 @@ if (c == '\t') {
 
         String completion = matches.get(0);
 
-        String prefix;
-
-        if (lastSpace == -1) {
-            prefix = current;
-        } else {
-            prefix = current.substring(lastSpace + 1);
-        }
-
         String remaining =
-                completion.substring(prefix.length());
+                completion.substring(partial.length());
 
         System.out.print(remaining);
         System.out.print(" ");
@@ -91,32 +85,21 @@ if (c == '\t') {
     }
 
     // Multiple matches
-    String prefix;
-
-    if (lastSpace == -1) {
-        prefix = current;
-    } else {
-        prefix = current.substring(lastSpace + 1);
-    }
-
     String commonPrefix =
             longestCommonPrefix(matches);
 
-    // There are additional characters we can autocomplete
-    if (commonPrefix.length() > prefix.length()) {
+    if (commonPrefix.length() > partial.length()) {
 
         String remaining =
-                commonPrefix.substring(prefix.length());
+                commonPrefix.substring(partial.length());
 
         System.out.print(remaining);
 
         input.append(remaining);
 
         waitingForSecondTab = false;
-    }
 
-    // Already at the longest common prefix
-    else {
+    } else {
 
         if (!waitingForSecondTab) {
 
@@ -217,14 +200,35 @@ if (c == '\t') {
 }
     
     private static ArrayList<String> findFilenameMatches(
-        String prefix) {
+        String partialPath) {
 
     ArrayList<String> matches = new ArrayList<>();
 
-    File currentDirectory =
-            new File(System.getProperty("user.dir"));
+    // Find the last '/'
+    int lastSlash = partialPath.lastIndexOf('/');
 
-    File[] files = currentDirectory.listFiles();
+    String directoryPath;
+    String prefix;
+
+    if (lastSlash == -1) {
+
+        // No '/' -> current directory
+        directoryPath = ".";
+
+        prefix = partialPath;
+
+    } else {
+
+        // Everything up to and including '/' is the directory
+        directoryPath = partialPath.substring(0, lastSlash + 1);
+
+        // Everything after '/' is the filename prefix
+        prefix = partialPath.substring(lastSlash + 1);
+    }
+
+    File directory = new File(directoryPath);
+
+    File[] files = directory.listFiles();
 
     if (files == null) {
         return matches;
@@ -233,7 +237,9 @@ if (c == '\t') {
     for (File file : files) {
 
         if (file.getName().startsWith(prefix)) {
-            matches.add(file.getName());
+            matches.add(
+                    directoryPath + file.getName()
+            );
         }
     }
 
@@ -241,7 +247,7 @@ if (c == '\t') {
 
     return matches;
 }
-
+    
     private static String longestCommonPrefix(
             ArrayList<String> strings) {
 
