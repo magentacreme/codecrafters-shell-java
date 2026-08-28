@@ -42,6 +42,7 @@ import command.CdCommand;
 import command.Command;
 import command.CommandRegistry;
 import command.CompleteCommand;
+import command.DeclareCommand;
 import command.EchoCommand;
 import command.ExitCommand;
 import command.HistoryCommand;
@@ -122,7 +123,8 @@ public class Main
                 new TypeCommand(commandRegistry, pathResolver),
                 new CompleteCommand(environment, autoCompleteRegistry),
                 new JobsCommand(jobsPrinter),
-                new HistoryCommand(history)
+                new HistoryCommand(history),
+                new DeclareCommand()
         );
 
         commands.forEach(commandRegistry::registerBuiltIn);
