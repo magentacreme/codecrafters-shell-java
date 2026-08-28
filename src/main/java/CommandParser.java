@@ -35,8 +35,8 @@ if (c == '\t') {
 
     int lastSpace = current.lastIndexOf(' ');
 
-    ArrayList<String> matches;
     String partial;
+    ArrayList<String> matches;
 
     // Command completion
     if (lastSpace == -1) {
@@ -65,7 +65,7 @@ if (c == '\t') {
         continue;
     }
 
-    // Exactly one match
+    // One match
     if (matches.size() == 1) {
 
         String completion = matches.get(0);
@@ -204,7 +204,6 @@ if (c == '\t') {
 
     ArrayList<String> matches = new ArrayList<>();
 
-    // Find the last '/'
     int lastSlash = partialPath.lastIndexOf('/');
 
     String directoryPath;
@@ -212,18 +211,16 @@ if (c == '\t') {
 
     if (lastSlash == -1) {
 
-        // No '/' -> current directory
         directoryPath = ".";
-
         prefix = partialPath;
 
     } else {
 
-        // Everything up to and including '/' is the directory
-        directoryPath = partialPath.substring(0, lastSlash + 1);
+        directoryPath =
+                partialPath.substring(0, lastSlash + 1);
 
-        // Everything after '/' is the filename prefix
-        prefix = partialPath.substring(lastSlash + 1);
+        prefix =
+                partialPath.substring(lastSlash + 1);
     }
 
     File directory = new File(directoryPath);
@@ -237,9 +234,21 @@ if (c == '\t') {
     for (File file : files) {
 
         if (file.getName().startsWith(prefix)) {
-            matches.add(
-                    directoryPath + file.getName()
-            );
+
+            if (lastSlash == -1) {
+
+                // Example:
+                // pineappl -> pineapple-96.txt
+                matches.add(file.getName());
+
+            } else {
+
+                // Example:
+                // pear/mango/g -> pear/mango/grape.txt
+                matches.add(
+                        directoryPath + file.getName()
+                );
+            }
         }
     }
 
