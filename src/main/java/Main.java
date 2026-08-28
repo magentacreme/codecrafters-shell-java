@@ -319,6 +319,13 @@ public class Main
     {
         List<String> args = ArgumentParser.parseArgs(input);
 
+        int pipelineIndex = args.indexOf("|");
+        if (pipelineIndex != -1)
+        {
+            executePipeline(args, input);
+            return;
+        }
+
         Redirection redirection = resolveRedirection(args);
         if (redirection != null)
         {
@@ -340,6 +347,74 @@ public class Main
         else
         {
             System.out.println(commandName + ": command not found");
+        }
+    }
+
+    private static void executePipeline(List<String> args, String input)
+    {
+        try
+        {
+            List<List<String>> commands = new ArrayList<>();
+            List<String> command = new ArrayList<>();
+            for (String arg : args)
+            {
+                if (arg.equals("|"))
+                {
+                    if (command.isEmpty())
+                    {
+                        throw new IllegalArgumentException("Invalid null command");
+                    }
+                    commands.add(command);
+                    command = new ArrayList<>();
+                }
+                else
+                {
+                    command.add(arg);
+                }
+            }
+            if (command.isEmpty())
+            {
+                throw new IllegalArgumentException("Invalid null command");
+            }
+            commands.add(command);
+
+            boolean background = commands.getLast().getLast().equals("&");
+            if (background)
+            {
+                commands.getLast().removeLast();
+            }
+
+            List<ProcessBuilder> processBuilders = commands.stream()
+                    .map(ProcessBuilder::new)
+                    .peek(processBuilder -> processBuilder.redirectError(ProcessBuilder.Redirect.INHERIT))
+                    .toList();
+            processBuilders.getFirst().redirectInput(ProcessBuilder.Redirect.INHERIT);
+            processBuilders.getLast().redirectOutput(ProcessBuilder.Redirect.INHERIT);
+
+            List<Process> processes = ProcessBuilder.startPipeline(processBuilders);
+            Process lastProcess = processes.getLast();
+            lastProcess.onExit().thenAccept(completedProcess ->
+            {
+                jobRegistry.markAsDone(completedProcess.pid());
+            });
+
+            if (background)
+            {
+                int jobNumber = jobRegistry.nextJobNumber();
+                System.out.printf("[%s] %s\n", jobNumber, lastProcess.pid());
+                jobRegistry.register(new Job(jobNumber, lastProcess.pid(), input, JobStatus.RUNNING, Instant.now()));
+            }
+            else
+            {
+                for (Process process : processes)
+                {
+                    process.waitFor();
+                }
+            }
+        }
+        catch (IOException | InterruptedException e)
+        {
+            throw new RuntimeException(e);
         }
     }
 
