@@ -134,8 +134,8 @@ public class Main {
                         if (isBackground) {
                             Process process = ProcessExecutor.startCommand(parts, currentDirectory);
                             for (BackgroundJob job : backgroundJobs) {
-                                if (job.marker == '+') {
-                                    job.marker = '-';
+                                if (job.marker == '-') {
+                                    job.marker = '+';
                                 }
                             }
                             backgroundJobs.add(new BackgroundJob(nextJobNumber, process, input.trim(), '+'));
