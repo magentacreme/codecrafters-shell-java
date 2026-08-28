@@ -28,16 +28,38 @@ public final class CommandParser {
             }
 
             // TAB
-            if (c == '\t') {
+            // TAB
+if (c == '\t') {
 
     String current = input.toString();
 
-    ArrayList<String> matches =
-            findMatches(current, builtins);
+    // Check whether we are completing a command
+    // or a filename argument.
+    int lastSpace = current.lastIndexOf(' ');
 
+    ArrayList<String> matches;
+
+    if (lastSpace == -1) {
+
+        // Command completion
+        matches = findMatches(current, builtins);
+
+    } else {
+
+        // Filename completion
+        String filenamePrefix =
+                current.substring(lastSpace + 1);
+
+        matches = findFilenameMatches(filenamePrefix);
+    }
+
+    // No matches
     if (matches.isEmpty()) {
+
         System.out.print("\007");
+
         waitingForSecondTab = false;
+
         continue;
     }
 
@@ -46,8 +68,16 @@ public final class CommandParser {
 
         String completion = matches.get(0);
 
+        String prefix;
+
+        if (lastSpace == -1) {
+            prefix = current;
+        } else {
+            prefix = current.substring(lastSpace + 1);
+        }
+
         String remaining =
-                completion.substring(current.length());
+                completion.substring(prefix.length());
 
         System.out.print(remaining);
         System.out.print(" ");
@@ -56,18 +86,27 @@ public final class CommandParser {
         input.append(" ");
 
         waitingForSecondTab = false;
+
         continue;
     }
 
     // Multiple matches
+    String prefix;
+
+    if (lastSpace == -1) {
+        prefix = current;
+    } else {
+        prefix = current.substring(lastSpace + 1);
+    }
+
     String commonPrefix =
             longestCommonPrefix(matches);
 
     // There are additional characters we can autocomplete
-    if (commonPrefix.length() > current.length()) {
+    if (commonPrefix.length() > prefix.length()) {
 
         String remaining =
-                commonPrefix.substring(current.length());
+                commonPrefix.substring(prefix.length());
 
         System.out.print(remaining);
 
@@ -176,6 +215,33 @@ public final class CommandParser {
 
     return matches;
 }
+    
+    private static ArrayList<String> findFilenameMatches(
+        String prefix) {
+
+    ArrayList<String> matches = new ArrayList<>();
+
+    File currentDirectory =
+            new File(System.getProperty("user.dir"));
+
+    File[] files = currentDirectory.listFiles();
+
+    if (files == null) {
+        return matches;
+    }
+
+    for (File file : files) {
+
+        if (file.getName().startsWith(prefix)) {
+            matches.add(file.getName());
+        }
+    }
+
+    matches.sort(String::compareTo);
+
+    return matches;
+}
+
     private static String longestCommonPrefix(
             ArrayList<String> strings) {
 
