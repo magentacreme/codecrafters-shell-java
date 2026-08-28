@@ -90,8 +90,8 @@ public class Main {
                 }
                 case "pwd" -> System.out.println(currentDirectory.getAbsolutePath());
                 case "jobs" -> {
-                    List<BackgroundJob> completedJobsForCommand = reapCompletedJobs(backgroundJobs);
-                    printJobStatuses(completedJobsForCommand, backgroundJobs, true);
+                    reapCompletedJobs(backgroundJobs);
+                    printJobStatuses(List.of(), backgroundJobs, true);
                 }
                 case "complete" -> {
                     if (parts.length >= 4 && parts[1].equals("-C")) {
@@ -160,6 +160,22 @@ public class Main {
                 completedJobs.add(job);
             }
         }
+        for (BackgroundJob completedJob : completedJobs) {
+            if (completedJob.marker == '-') {
+                for (BackgroundJob job : backgroundJobs) {
+                    if (job.marker == '-' && !completedJobs.contains(job)) {
+                        job.marker = ' ';
+                    }
+                }
+            } else if (completedJob.marker == '+') {
+                for (BackgroundJob job : backgroundJobs) {
+                    if (job.marker == '-' && !completedJobs.contains(job)) {
+                        job.marker = '+';
+                        break;
+                    }
+                }
+            }
+        }
         backgroundJobs.removeAll(completedJobs);
         return completedJobs;
     }
@@ -172,12 +188,8 @@ public class Main {
         }
 
         if (includeRunning) {
-            for (int i = 0; i < runningJobs.size(); i++) {
-                BackgroundJob job = runningJobs.get(i);
-                String marker = i == runningJobs.size() - 1
-                        ? "+"
-                        : i == runningJobs.size() - 2 ? "-" : " ";
-                System.out.printf("[%d]%s  %-24s%s%n", job.number, marker, "Running", job.command);
+            for (BackgroundJob job : runningJobs) {
+                System.out.printf("[%d]%c  %-24s%s%n", job.number, job.marker, "Running", job.command);
             }
         }
     }
