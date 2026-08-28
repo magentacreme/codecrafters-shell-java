@@ -362,13 +362,11 @@ public class Main {
     }
 
     boolean plusCompleted = false;
-    boolean minusCompleted = false;
 
     for (BackgroundJob job : completedJobs) {
         if (job.marker == '+') {
             plusCompleted = true;
-        } else if (job.marker == '-') {
-            minusCompleted = true;
+            break;
         }
     }
 
@@ -393,24 +391,14 @@ public class Main {
                 backgroundJobs.get(i).marker = ' ';
             }
         }
-    } else if (minusCompleted) {
-        /*
-         * The '-' job exited.
-         * Clear former '-' markers and set the newest job that isn't '+' to '-'.
-         */
-        for (BackgroundJob job : backgroundJobs) {
-            if (job.marker == '-') {
-                job.marker = ' ';
-            }
-        }
-        for (int i = backgroundJobs.size() - 1; i >= 0; i--) {
-            BackgroundJob job = backgroundJobs.get(i);
-            if (job.marker != '+') {
-                job.marker = '-';
-                break;
-            }
-        }
     }
+    /*
+     * If the job that exited was '-' (or unmarked), the remaining
+     * jobs keep whatever markers they already had. The '-' slot is
+     * only ever (re)assigned when the '+' job completes (above) or
+     * when a new job is started (see the marker-shifting block in
+     * main()) — it is never backfilled just because it fell vacant.
+     */
 
     return completedJobs;
 }
