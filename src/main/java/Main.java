@@ -2,7 +2,7 @@ import java.io.File;
 import java.util.Set;
 
 public class Main {
-    static final Set<String> builtins = Set.of("exit", "echo", "type", "pwd", "cd");
+    static final Set<String> builtins = Set.of("exit", "echo", "type", "pwd", "cd","complete");
 
     public static void main(String[] args) throws Exception {
         
