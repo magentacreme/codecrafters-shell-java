@@ -1,6 +1,7 @@
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -40,6 +41,8 @@ public class Main {
         int nextJobNumber = 1;
 
         while (true) {
+            List<BackgroundJob> completedJobs = reapCompletedJobs(backgroundJobs);
+            printJobStatuses(completedJobs, backgroundJobs, false);
             System.out.print("$ ");
 
             String input = CommandParser.readCommand(builtins, completionScripts);
@@ -86,20 +89,8 @@ public class Main {
                 }
                 case "pwd" -> System.out.println(currentDirectory.getAbsolutePath());
                 case "jobs" -> {
-                    List<BackgroundJob> completedJobs = reapCompletedJobs(backgroundJobs);
-                    for (int i = 0; i < backgroundJobs.size(); i++) {
-                        BackgroundJob job = backgroundJobs.get(i);
-                        boolean completed = completedJobs.contains(job);
-                        String status = completed ? "Done" : "Running";
-                        String marker = i == backgroundJobs.size() - 1
-                                ? "+"
-                                : i == backgroundJobs.size() - 2 ? "-" : " ";
-                        String commandText = completed
-                                ? job.command.replaceAll("\\s*&$", "")
-                                : job.command;
-                        System.out.printf("[%d]%s  %-24s%s%n", job.number, marker, status, commandText);
-                    }
-                    backgroundJobs.removeAll(completedJobs);
+                    List<BackgroundJob> completedJobsForCommand = reapCompletedJobs(backgroundJobs);
+                    printJobStatuses(completedJobsForCommand, backgroundJobs, true);
                 }
                 case "complete" -> {
                     if (parts.length >= 4 && parts[1].equals("-C")) {
@@ -164,5 +155,27 @@ public class Main {
             }
         }
         return completedJobs;
+    }
+
+    private static void printJobStatuses(
+            List<BackgroundJob> completedJobs, List<BackgroundJob> runningJobs, boolean includeRunning) {
+        List<BackgroundJob> jobs = new ArrayList<>(completedJobs);
+        jobs.addAll(runningJobs);
+        jobs.sort(Comparator.comparingInt(job -> job.number));
+
+        for (int i = 0; i < jobs.size(); i++) {
+            BackgroundJob job = jobs.get(i);
+            boolean completed = completedJobs.contains(job);
+            if (!completed && !includeRunning) {
+                continue;
+            }
+
+            String marker = i == jobs.size() - 1
+                    ? "+"
+                    : i == jobs.size() - 2 ? "-" : " ";
+            String status = completed ? "Done" : "Running";
+            String command = completed ? job.command.replaceAll("\\s*&$", "") : job.command;
+            System.out.printf("[%d]%s  %-24s%s%n", job.number, marker, status, command);
+        }
     }
 }
