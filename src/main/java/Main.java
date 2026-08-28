@@ -206,8 +206,8 @@ private static void printJobStatuses(
     allJobs.sort((a, b) -> Integer.compare(a.number, b.number));
 
     for (BackgroundJob job : allJobs) {
-        String command = job.command.replaceAll("\\s*&$", "");
-
+        // String command = job.command.replaceAll("\\s*&$", "");
+        String command = job.command;
         String status = job.process.isAlive() ? "Running" : "Done";
 
         System.out.printf(
