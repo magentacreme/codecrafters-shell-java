@@ -1,12 +1,16 @@
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.InputStreamReader;
 import java.util.ArrayList;
+import java.util.Map;
 import java.util.Set;
 
 public final class CommandParser {
 
     private CommandParser() {}
     
-    public static String readCommand(Set<String> builtins) throws Exception {
+        public static String readCommand(
+            Set<String> builtins, Map<String, String> completionScripts) throws Exception {
 
         StringBuilder input = new StringBuilder();
 
@@ -34,6 +38,22 @@ if (c == '\t') {
     String current = input.toString();
 
     int lastSpace = current.lastIndexOf(' ');
+
+    if (lastSpace > 0) {
+        String command = current.substring(0, current.indexOf(' '));
+        String completer = completionScripts.get(command);
+
+        if (completer != null) {
+            String completion = runCompleter(completer);
+
+            if (completion != null) {
+                System.out.print(completion + " ");
+                input.append(completion).append(" ");
+                waitingForSecondTab = false;
+                continue;
+            }
+        }
+    }
 
     String partial;
     ArrayList<String> matches;
@@ -204,6 +224,16 @@ if (c == '\t') {
 
     return matches;
 }
+
+    private static String runCompleter(String completer) throws Exception {
+        Process process = new ProcessBuilder(completer).start();
+        try (BufferedReader output = new BufferedReader(
+                new InputStreamReader(process.getInputStream()))) {
+            String completion = output.readLine();
+            process.waitFor();
+            return completion;
+        }
+    }
     
     private static ArrayList<String> findFilenameMatches(
         String partialPath) {

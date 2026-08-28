@@ -25,7 +25,7 @@ public class Main {
         while (true) {
             System.out.print("$ ");
 
-            String input = CommandParser.readCommand(builtins);
+            String input = CommandParser.readCommand(builtins, completionScripts);
 
             if (input.isEmpty()) {
                 continue;
