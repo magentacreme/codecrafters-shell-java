@@ -388,6 +388,12 @@ public class Main
                 commands.getLast().removeLast();
             }
 
+            if (commands.stream().noneMatch(stage -> commandRegistry.get(stage.getFirst()) != null))
+            {
+                executeExternalPipeline(commands, input, background);
+                return;
+            }
+
             List<PipedInputStream> pipeInputs = new ArrayList<>();
             List<PipedOutputStream> pipeOutputs = new ArrayList<>();
             for (int i = 0; i < commands.size() - 1; i++)
@@ -485,6 +491,44 @@ public class Main
                 for (Thread worker : workers)
                 {
                     worker.join();
+                }
+            }
+        }
+        catch (IOException | InterruptedException e)
+        {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private static void executeExternalPipeline(List<List<String>> commands, String input, boolean background)
+    {
+        try
+        {
+            List<ProcessBuilder> processBuilders = commands.stream()
+                    .map(ProcessBuilder::new)
+                    .peek(processBuilder -> processBuilder.redirectError(ProcessBuilder.Redirect.INHERIT))
+                    .toList();
+            processBuilders.getFirst().redirectInput(ProcessBuilder.Redirect.INHERIT);
+            processBuilders.getLast().redirectOutput(ProcessBuilder.Redirect.INHERIT);
+
+            List<Process> processes = ProcessBuilder.startPipeline(processBuilders);
+            Process lastProcess = processes.getLast();
+            lastProcess.onExit().thenAccept(completedProcess ->
+            {
+                jobRegistry.markAsDone(completedProcess.pid());
+            });
+
+            if (background)
+            {
+                int jobNumber = jobRegistry.nextJobNumber();
+                System.out.printf("[%s] %s\n", jobNumber, lastProcess.pid());
+                jobRegistry.register(new Job(jobNumber, lastProcess.pid(), input, JobStatus.RUNNING, Instant.now()));
+            }
+            else
+            {
+                for (Process process : processes)
+                {
+                    process.waitFor();
                 }
             }
         }
