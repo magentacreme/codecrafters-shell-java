@@ -55,9 +55,6 @@ public class Main {
             }
 
             boolean isBackground = parts[parts.length - 1].equals("&");
-                    for (BackgroundJob job : backgroundJobs) {
-                        System.out.printf("[%d]+  %-24s%s%n", job.number, "Running", job.command);
-                    }
             if (isBackground) {
                 parts = Arrays.copyOf(parts, parts.length - 1);
                 if (parts.length == 0) {
@@ -90,6 +87,9 @@ public class Main {
                 }
                 case "pwd" -> System.out.println(currentDirectory.getAbsolutePath());
                 case "jobs" -> {
+                    for (BackgroundJob job : backgroundJobs) {
+                        System.out.printf("[%d]+  %-24s%s%n", job.number, "Running", job.command);
+                    }
                 }
                 case "cd" -> {
                     if (parts.length < 2) {
