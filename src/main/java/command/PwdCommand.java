@@ -17,7 +17,7 @@ public class PwdCommand implements Command
     @Override
     public void execute(List<String> args, PrintStream stdout, PrintStream stderr)
     {
-        System.out.println(environment.getCurrentDirectory());
+        stdout.println(environment.getCurrentDirectory());
     }
 
     @Override

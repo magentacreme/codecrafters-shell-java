@@ -21,13 +21,13 @@ public class TypeCommand implements Command
         String command = args.getFirst();
         if (commandRegistry.contains(command))
         {
-            System.out.println(command + " is a shell builtin");
+            stdout.println(command + " is a shell builtin");
         }
         else
         {
             pathResolver.resolve(command).ifPresentOrElse(
-                    path -> System.out.println(command + " is " + path),
-                    () -> System.out.println(command + ": not found"));
+                    path -> stdout.println(command + " is " + path),
+                    () -> stdout.println(command + ": not found"));
         }
     }
 

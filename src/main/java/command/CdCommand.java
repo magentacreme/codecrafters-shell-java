@@ -32,7 +32,7 @@ public class CdCommand implements Command
             {
                 if (e instanceof FileNotFoundException)
                 {
-                    System.out.printf("%s: %s: No such file or directory%n", name(), targetDir);
+                    stderr.printf("%s: %s: No such file or directory%n", name(), targetDir);
                 }
                 else
                 {

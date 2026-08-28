@@ -1,6 +1,10 @@
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.io.PipedInputStream;
+import java.io.PipedOutputStream;
 import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.nio.file.Files;
@@ -384,22 +388,90 @@ public class Main
                 commands.getLast().removeLast();
             }
 
-            List<ProcessBuilder> processBuilders = commands.stream()
-                    .map(ProcessBuilder::new)
-                    .peek(processBuilder -> processBuilder.redirectError(ProcessBuilder.Redirect.INHERIT))
-                    .toList();
-            processBuilders.getFirst().redirectInput(ProcessBuilder.Redirect.INHERIT);
-            processBuilders.getLast().redirectOutput(ProcessBuilder.Redirect.INHERIT);
-
-            List<Process> processes = ProcessBuilder.startPipeline(processBuilders);
-            Process lastProcess = processes.getLast();
-            lastProcess.onExit().thenAccept(completedProcess ->
+            List<PipedInputStream> pipeInputs = new ArrayList<>();
+            List<PipedOutputStream> pipeOutputs = new ArrayList<>();
+            for (int i = 0; i < commands.size() - 1; i++)
             {
-                jobRegistry.markAsDone(completedProcess.pid());
-            });
+                PipedInputStream pipeInput = new PipedInputStream();
+                pipeInputs.add(pipeInput);
+                pipeOutputs.add(new PipedOutputStream(pipeInput));
+            }
+
+            List<Process> processes = new ArrayList<>();
+            List<Thread> workers = new ArrayList<>();
+            for (int i = 0; i < commands.size(); i++)
+            {
+                List<String> stage = commands.get(i);
+                Command builtin = commandRegistry.get(stage.getFirst());
+                InputStream stageInput = i == 0 ? System.in : pipeInputs.get(i - 1);
+                OutputStream stageOutput = i == commands.size() - 1 ? System.out : pipeOutputs.get(i);
+
+                if (builtin != null)
+                {
+                    int stageIndex = i;
+                    Thread worker = new Thread(() ->
+                    {
+                        PrintStream stdout = new PrintStream(stageOutput);
+                        try
+                        {
+                            builtin.execute(stage.subList(1, stage.size()), stdout, System.err);
+                            if (stageIndex > 0)
+                            {
+                                stageInput.transferTo(OutputStream.nullOutputStream());
+                            }
+                        }
+                        catch (IOException e)
+                        {
+                            throw new RuntimeException(e);
+                        }
+                        finally
+                        {
+                            stdout.flush();
+                            if (stageOutput != System.out)
+                            {
+                                stdout.close();
+                            }
+                        }
+                    });
+                    workers.add(worker);
+                    worker.start();
+                    continue;
+                }
+
+                ProcessBuilder processBuilder = new ProcessBuilder(stage)
+                        .redirectError(ProcessBuilder.Redirect.INHERIT);
+                if (i == 0)
+                {
+                    processBuilder.redirectInput(ProcessBuilder.Redirect.INHERIT);
+                }
+                else
+                {
+                    processBuilder.redirectInput(ProcessBuilder.Redirect.PIPE);
+                }
+                if (i == commands.size() - 1)
+                {
+                    processBuilder.redirectOutput(ProcessBuilder.Redirect.INHERIT);
+                }
+                else
+                {
+                    processBuilder.redirectOutput(ProcessBuilder.Redirect.PIPE);
+                }
+
+                Process process = processBuilder.start();
+                processes.add(process);
+                if (i > 0)
+                {
+                    workers.add(copyInBackground(stageInput, process.getOutputStream()));
+                }
+                if (i < commands.size() - 1)
+                {
+                    workers.add(copyInBackground(process.getInputStream(), stageOutput));
+                }
+            }
 
             if (background)
             {
+                Process lastProcess = processes.getLast();
                 int jobNumber = jobRegistry.nextJobNumber();
                 System.out.printf("[%s] %s\n", jobNumber, lastProcess.pid());
                 jobRegistry.register(new Job(jobNumber, lastProcess.pid(), input, JobStatus.RUNNING, Instant.now()));
@@ -410,12 +482,33 @@ public class Main
                 {
                     process.waitFor();
                 }
+                for (Thread worker : workers)
+                {
+                    worker.join();
+                }
             }
         }
         catch (IOException | InterruptedException e)
         {
             throw new RuntimeException(e);
         }
+    }
+
+    private static Thread copyInBackground(InputStream input, OutputStream output)
+    {
+        Thread worker = new Thread(() ->
+        {
+            try (input; output)
+            {
+                input.transferTo(output);
+            }
+            catch (IOException e)
+            {
+                throw new RuntimeException(e);
+            }
+        });
+        worker.start();
+        return worker;
     }
 
     private static Redirection resolveRedirection(List<String> args)
