@@ -152,11 +152,12 @@ public class Main {
         }
     }
 
-    private static List<BackgroundJob> reapCompletedJobs(
+private static List<BackgroundJob> reapCompletedJobs(
         List<BackgroundJob> backgroundJobs) throws InterruptedException {
 
     List<BackgroundJob> completedJobs = new ArrayList<>();
 
+    // Find all completed jobs.
     for (BackgroundJob job : backgroundJobs) {
         if (!job.process.isAlive()) {
             job.process.waitFor();
@@ -164,11 +165,28 @@ public class Main {
         }
     }
 
+    // Check whether the current (+) job is being completed.
+    boolean plusJobCompleted = false;
+
+    for (BackgroundJob job : completedJobs) {
+        if (job.marker == '+') {
+            plusJobCompleted = true;
+            break;
+        }
+    }
+
     // Remove completed jobs.
     backgroundJobs.removeAll(completedJobs);
 
-    // Do NOT modify markers here.
-    // Existing + and - markers belong to the remaining jobs.
+    // If the + job disappeared, promote the - job to +.
+    if (plusJobCompleted) {
+        for (BackgroundJob job : backgroundJobs) {
+            if (job.marker == '-') {
+                job.marker = '+';
+                break;
+            }
+        }
+    }
 
     return completedJobs;
 }
