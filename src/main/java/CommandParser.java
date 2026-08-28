@@ -49,20 +49,44 @@ if (c == '\t') {
             if (completer != null) {
                 String currentWord = current.substring(lastSpace + 1);
                 String previousWord = words.length > 1 ? words[words.length - 2] : "";
-                String completion = runCompleter(
+                ArrayList<String> matches = runCompleter(
                     completer, command, currentWord, previousWord, current);
 
-                if (completion == null || completion.isEmpty()) {
+                if (matches.isEmpty()) {
                     System.out.print("\007");
-                } else {
+                    waitingForSecondTab = false;
+                    continue;
+                }
+
+                if (matches.size() == 1) {
+                    String completion = matches.get(0);
                     String remaining = completion.startsWith(currentWord)
                             ? completion.substring(currentWord.length())
                             : completion;
                     System.out.print(remaining + " ");
                     input.append(remaining).append(" ");
+
+                    waitingForSecondTab = false;
+                    continue;
                 }
 
-                waitingForSecondTab = false;
+                if (!waitingForSecondTab) {
+                    System.out.print("\007");
+                    waitingForSecondTab = true;
+                } else {
+                    System.out.println();
+                    for (int i = 0; i < matches.size(); i++) {
+                        if (i > 0) {
+                            System.out.print("  ");
+                        }
+                        System.out.print(matches.get(i));
+                    }
+                    System.out.println();
+                    System.out.print("$ ");
+                    System.out.print(current);
+                    waitingForSecondTab = false;
+                }
+
                 continue;
             }
         }
@@ -238,7 +262,7 @@ if (c == '\t') {
     return matches;
 }
 
-    private static String runCompleter(
+    private static ArrayList<String> runCompleter(
             String completer, String command, String currentWord, String previousWord,
             String commandLine)
             throws Exception {
@@ -249,12 +273,17 @@ if (c == '\t') {
             "COMP_POINT",
             String.valueOf(commandLine.getBytes(StandardCharsets.UTF_8).length));
         Process process = processBuilder.start();
+        ArrayList<String> completions = new ArrayList<>();
         try (BufferedReader output = new BufferedReader(
                 new InputStreamReader(process.getInputStream()))) {
-            String completion = output.readLine();
+            String completion;
+            while ((completion = output.readLine()) != null) {
+                completions.add(completion);
+            }
             process.waitFor();
-            return completion;
         }
+        completions.sort(String::compareTo);
+        return completions;
     }
     
     private static ArrayList<String> findFilenameMatches(
