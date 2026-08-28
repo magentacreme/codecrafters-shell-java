@@ -379,13 +379,11 @@ public class Main {
     if (plusCompleted) {
         /*
          * The current '+' job exited.
-         * The newest remaining job takes '+', and second-newest takes '-'.
+         * The newest remaining job takes '-'.
          */
         int size = backgroundJobs.size();
         for (int i = 0; i < size; i++) {
             if (i == size - 1) {
-                backgroundJobs.get(i).marker = '+';
-            } else if (i == size - 2) {
                 backgroundJobs.get(i).marker = '-';
             } else {
                 backgroundJobs.get(i).marker = ' ';
