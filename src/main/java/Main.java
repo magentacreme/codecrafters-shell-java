@@ -1,11 +1,26 @@
 import java.io.File;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
 public class Main {
     static final Set<String> builtins = Set.of("exit", "echo", "type", "pwd", "cd", "complete", "jobs");
+
+    private static final class BackgroundJob {
+        private final int number;
+        private final Process process;
+        private final String command;
+
+        private BackgroundJob(int number, Process process, String command) {
+            this.number = number;
+            this.process = process;
+            this.command = command;
+        }
+    }
 
     public static void main(String[] args) throws Exception {
         
@@ -22,9 +37,10 @@ public class Main {
         
         File currentDirectory = new File(System.getProperty("user.dir"));
         Map<String, String> completionScripts = new HashMap<>();
-        int nextJobNumber = 1;
+        List<BackgroundJob> backgroundJobs = new ArrayList<>();
 
         while (true) {
+            reapCompletedJobs(backgroundJobs);
             System.out.print("$ ");
 
             String input = CommandParser.readCommand(builtins, completionScripts);
@@ -34,6 +50,9 @@ public class Main {
             }
 
             String[] parts = CommandParser.parse(input);
+                    for (BackgroundJob job : backgroundJobs) {
+                        System.out.printf("[%d]+  %-24s%s%n", job.number, "Running", job.command);
+                    }
             if (parts.length == 0) {
                 continue;
             }
@@ -112,8 +131,9 @@ public class Main {
                     if (executablePath != null) {
                         if (isBackground) {
                             Process process = ProcessExecutor.startCommand(parts, currentDirectory);
-                            System.out.println("[" + nextJobNumber + "] " + process.pid());
-                            nextJobNumber++;
+                            int jobNumber = nextJobNumber(backgroundJobs);
+                            backgroundJobs.add(new BackgroundJob(jobNumber, process, input.trim()));
+                            System.out.println("[" + jobNumber + "] " + process.pid());
                         } else {
                             ProcessExecutor.executeCommand(parts, currentDirectory);
                         }
@@ -121,6 +141,35 @@ public class Main {
                         System.out.println(command + ": command not found");
                     }
                 }
+            }
+        }
+    }
+
+    private static int nextJobNumber(List<BackgroundJob> backgroundJobs) {
+        int number = 1;
+        while (true) {
+            boolean used = false;
+            for (BackgroundJob job : backgroundJobs) {
+                if (job.number == number) {
+                    used = true;
+                    break;
+                }
+            }
+            if (!used) {
+                return number;
+            }
+            number++;
+        }
+    }
+
+    private static void reapCompletedJobs(List<BackgroundJob> backgroundJobs) throws InterruptedException {
+        Iterator<BackgroundJob> jobs = backgroundJobs.iterator();
+        while (jobs.hasNext()) {
+            BackgroundJob job = jobs.next();
+            if (!job.process.isAlive()) {
+                job.process.waitFor();
+                System.out.printf("[%d]+  %-24s%s%n", job.number, "Done", job.command);
+                jobs.remove();
             }
         }
     }
