@@ -361,6 +361,7 @@ public class Main
     {
         List<String> args = ArgumentParser.parseArgs(input).stream()
                 .map(Main::expandVariables)
+                .filter(argument -> !argument.isEmpty())
                 .collect(Collectors.toCollection(ArrayList::new));
 
         int pipelineIndex = args.indexOf("|");
