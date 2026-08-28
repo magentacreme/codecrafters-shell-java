@@ -157,7 +157,6 @@ private static List<BackgroundJob> reapCompletedJobs(
 
     List<BackgroundJob> completedJobs = new ArrayList<>();
 
-    // Find all completed jobs.
     for (BackgroundJob job : backgroundJobs) {
         if (!job.process.isAlive()) {
             job.process.waitFor();
@@ -165,20 +164,16 @@ private static List<BackgroundJob> reapCompletedJobs(
         }
     }
 
-    // Check whether the current (+) job is being completed.
     boolean plusJobCompleted = false;
 
     for (BackgroundJob job : completedJobs) {
         if (job.marker == '+') {
             plusJobCompleted = true;
-            break;
         }
     }
 
-    // Remove completed jobs.
     backgroundJobs.removeAll(completedJobs);
 
-    // If the + job disappeared, promote the - job to +.
     if (plusJobCompleted) {
         for (BackgroundJob job : backgroundJobs) {
             if (job.marker == '-') {
@@ -188,9 +183,25 @@ private static List<BackgroundJob> reapCompletedJobs(
         }
     }
 
+    // If the + job is still alive, don't leave an old - marker
+    // on jobs that aren't the current previous job.
+    if (!plusJobCompleted) {
+        boolean foundPlus = false;
+
+        for (BackgroundJob job : backgroundJobs) {
+            if (job.marker == '+') {
+                foundPlus = true;
+                continue;
+            }
+
+            if (foundPlus && job.marker == '-') {
+                job.marker = ' ';
+            }
+        }
+    }
+
     return completedJobs;
-}
-private static void printJobStatuses(
+}private static void printJobStatuses(
         List<BackgroundJob> completedJobs,
         List<BackgroundJob> runningJobs,
         boolean includeRunning) {
@@ -206,14 +217,16 @@ private static void printJobStatuses(
     allJobs.sort((a, b) -> Integer.compare(a.number, b.number));
 
     for (BackgroundJob job : allJobs) {
-        // String command = job.command.replaceAll("\\s*&$", "");
         String command = job.command;
+
         String status = job.process.isAlive() ? "Running" : "Done";
+
+        char marker = job.marker;
 
         System.out.printf(
                 "[%d]%c  %-24s%s%n",
                 job.number,
-                job.marker,
+                marker == ' ' ? ' ' : marker,
                 status,
                 command
         );
