@@ -63,7 +63,10 @@ public class Main {
 
         while (true) {
 
-            // Reap jobs before showing the next prompt.
+            /*
+             * Automatically reap completed jobs before
+             * displaying the next prompt.
+             */
             List<BackgroundJob> completedJobs =
                     reapCompletedJobs(backgroundJobs);
 
@@ -170,6 +173,10 @@ public class Main {
 
                 case "jobs" -> {
 
+                    /*
+                     * The jobs builtin uses exactly the
+                     * same reaping logic.
+                     */
                     List<BackgroundJob> reapedJobs =
                             reapCompletedJobs(
                                     backgroundJobs
@@ -292,10 +299,10 @@ public class Main {
                                     );
 
                             /*
-                             * The existing + job becomes -
-                             * when a new background job starts.
+                             * Existing + becomes -.
                              */
-                            for (BackgroundJob job : backgroundJobs) {
+                            for (BackgroundJob job :
+                                    backgroundJobs) {
 
                                 if (job.marker == '+') {
                                     job.marker = '-';
@@ -303,7 +310,7 @@ public class Main {
                             }
 
                             /*
-                             * New job becomes +.
+                             * New job is +.
                              */
                             backgroundJobs.add(
                                     new BackgroundJob(
@@ -343,6 +350,14 @@ public class Main {
         }
     }
 
+    /*
+     * Reap every completed job.
+     *
+     * Completed jobs are returned so they can be printed
+     * exactly once.
+     *
+     * Completed jobs are removed from backgroundJobs.
+     */
     private static List<BackgroundJob> reapCompletedJobs(
             List<BackgroundJob> backgroundJobs)
             throws InterruptedException {
@@ -351,7 +366,7 @@ public class Main {
                 new ArrayList<>();
 
         /*
-         * Find all jobs that have completed.
+         * Find all jobs that have exited.
          */
         for (BackgroundJob job : backgroundJobs) {
 
@@ -364,8 +379,16 @@ public class Main {
         }
 
         /*
-         * Remember whether the current (+) job
-         * was one of the completed jobs.
+         * If nothing completed, there is nothing else
+         * to do.
+         */
+        if (completedJobs.isEmpty()) {
+            return completedJobs;
+        }
+
+        /*
+         * Check whether the + job was among the jobs
+         * that completed.
          */
         boolean plusJobCompleted = false;
 
@@ -378,43 +401,39 @@ public class Main {
         }
 
         /*
-         * Remove completed jobs from the active list.
+         * Remove completed jobs from the job table.
          */
         backgroundJobs.removeAll(
                 completedJobs
         );
 
-        /*
-         * If the + job completed, promote the
-         * previous (-) job to +.
-         */
         if (plusJobCompleted) {
 
-            BackgroundJob previousJob = null;
-
-            for (BackgroundJob job : backgroundJobs) {
+            /*
+             * The current + job disappeared.
+             *
+             * Promote the old - job to +.
+             */
+            for (BackgroundJob job :
+                    backgroundJobs) {
 
                 if (job.marker == '-') {
-                    previousJob = job;
+
+                    job.marker = '+';
+
                     break;
                 }
-            }
-
-            if (previousJob != null) {
-                previousJob.marker = '+';
             }
 
         } else {
 
             /*
-             * A non-current job completed.
+             * A non-current job disappeared.
              *
-             * Any old - marker on a remaining active
-             * job should be cleared.
-             *
-             * The existing + job stays +.
+             * The old - marker is no longer valid.
              */
-            for (BackgroundJob job : backgroundJobs) {
+            for (BackgroundJob job :
+                    backgroundJobs) {
 
                 if (job.marker == '-') {
                     job.marker = ' ';
@@ -425,6 +444,9 @@ public class Main {
         return completedJobs;
     }
 
+    /*
+     * Print completed and/or running jobs.
+     */
     private static void printJobStatuses(
             List<BackgroundJob> completedJobs,
             List<BackgroundJob> runningJobs,
@@ -434,13 +456,15 @@ public class Main {
                 new ArrayList<>();
 
         /*
-         * Completed jobs are included first,
-         * then active jobs.
+         * Include completed jobs first.
          */
         allJobs.addAll(
                 completedJobs
         );
 
+        /*
+         * The jobs builtin also displays running jobs.
+         */
         if (includeRunning) {
 
             allJobs.addAll(
@@ -449,7 +473,7 @@ public class Main {
         }
 
         /*
-         * Always print in job-number order.
+         * Job numbers must be printed in ascending order.
          */
         allJobs.sort(
                 (a, b) ->
@@ -459,7 +483,8 @@ public class Main {
                         )
         );
 
-        for (BackgroundJob job : allJobs) {
+        for (BackgroundJob job :
+                allJobs) {
 
             boolean running =
                     job.process.isAlive();
@@ -472,7 +497,7 @@ public class Main {
                 status = "Running";
 
                 /*
-                 * Running jobs retain the &.
+                 * Running jobs retain &.
                  */
                 command = job.command;
 
