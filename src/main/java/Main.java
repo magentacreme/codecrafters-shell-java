@@ -7,6 +7,7 @@ import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
 import java.io.PrintStream;
 import java.io.PrintWriter;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
@@ -94,16 +95,17 @@ public class Main
         if (historyFile != null)
         {
             Path historyPath = Path.of(historyFile);
+            int initialHistorySize = history.size();
             Runtime.getRuntime().addShutdownHook(new Thread(() ->
             {
                 try
                 {
                     Files.write(
                             historyPath,
-                            history,
-                            java.nio.charset.StandardCharsets.UTF_8,
+                            history.subList(initialHistorySize, history.size()),
+                            StandardCharsets.UTF_8,
                             StandardOpenOption.CREATE,
-                            StandardOpenOption.TRUNCATE_EXISTING
+                            StandardOpenOption.APPEND
                     );
                 }
                 catch (IOException ignored)
