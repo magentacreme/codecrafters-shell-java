@@ -115,6 +115,27 @@ public class Main {
                         }
                     }
                 }
+                case "cd" -> {
+                    if (parts.length < 2) {
+                        continue;
+                    }
+
+                    String path = parts[1];
+                    File directory;
+                    if (path.equals("~")) {
+                        directory = new File(System.getenv("HOME"));
+                    } else if (path.startsWith("/")) {
+                        directory = new File(path);
+                    } else {
+                        directory = new File(currentDirectory, path);
+                    }
+
+                    if (directory.exists() && directory.isDirectory()) {
+                        currentDirectory = directory.getCanonicalFile();
+                    } else {
+                        System.out.println("cd: " + path + ": No such file or directory");
+                    }
+                }
                 default -> {
                     String executablePath = ProcessExecutor.findExecutable(command);
                     if (executablePath != null) {
