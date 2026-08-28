@@ -22,45 +22,18 @@ public class Main {
         private final int number;
         private final Process process;
         private final String command;
+        private char marker;
 
         private BackgroundJob(
                 int number,
                 Process process,
-                String command) {
+                String command,
+                char marker) {
 
             this.number = number;
             this.process = process;
             this.command = command;
-        }
-    }
-
-    /*
-     * A completed job must remember the marker it had
-     * BEFORE it was removed from the active job table.
-     */
-    private static final class CompletedJob {
-        private final BackgroundJob job;
-        private final char marker;
-
-        private CompletedJob(
-                BackgroundJob job,
-                char marker) {
-
-            this.job = job;
             this.marker = marker;
-        }
-    }
-
-    /*
-     * Result of reaping.
-     */
-    private static final class ReapResult {
-        private final List<CompletedJob> completedJobs;
-
-        private ReapResult(
-                List<CompletedJob> completedJobs) {
-
-            this.completedJobs = completedJobs;
         }
     }
 
@@ -91,24 +64,22 @@ public class Main {
         while (true) {
 
             /*
-             * -------------------------------------------------
-             * AUTOMATIC REAPING
-             * -------------------------------------------------
+             * Automatically reap jobs before showing the next prompt.
              *
-             * This happens before every prompt.
+             * This is what produces:
              *
-             * If the current '+' job finishes here,
-             * the newest remaining job becomes '+'.
+             * echo banana
+             * banana
+             * [2]+  Done                    cat /tmp/fifo
+             * $
              */
-            ReapResult reapResult =
+            List<BackgroundJob> completedJobs =
                     reapCompletedJobs(
                             backgroundJobs,
                             false
                     );
 
-            printCompletedJobs(
-                    reapResult.completedJobs
-            );
+            printCompletedJobs(completedJobs);
 
             System.out.print("$ ");
 
@@ -208,37 +179,29 @@ public class Main {
                 case "jobs" -> {
 
                     /*
-                     * -------------------------------------------------
-                     * JOBS BUILTIN
-                     * -------------------------------------------------
-                     *
-                     * Here + completion behaves differently from
-                     * automatic reaping.
-                     *
-                     * Example:
-                     *
-                     * [1]   Running
-                     * [2]-  Running
-                     * [3]+  Running
-                     *
-                     * if job 3 completes:
-                     *
-                     * [3]+  Done
-                     *
-                     * remaining job 1 becomes '-'.
+                     * The jobs builtin also performs reaping.
                      */
-                    ReapResult jobsResult =
+                    List<BackgroundJob> reapedJobs =
                             reapCompletedJobs(
                                     backgroundJobs,
                                     true
                             );
 
-                    printCompletedJobs(
-                            jobsResult.completedJobs
-                    );
-
-                    printRunningJobs(
-                            backgroundJobs
+                    /*
+                     * IMPORTANT:
+                     *
+                     * jobs prints RUNNING jobs first,
+                     * then completed jobs.
+                     *
+                     * This is required by RQ2:
+                     *
+                     * [1]   Running
+                     * [2]-  Done
+                     * [3]+  Running
+                     */
+                    printJobs(
+                            backgroundJobs,
+                            reapedJobs
                     );
                 }
 
@@ -351,14 +314,35 @@ public class Main {
                                             currentDirectory
                                     );
 
-                            BackgroundJob job =
+                            /*
+                             * Shift job markers:
+                             *
+                             * old + -> -
+                             * old - -> blank
+                             *
+                             * The new job becomes +.
+                             */
+                            for (BackgroundJob job :
+                                    backgroundJobs) {
+
+                                if (job.marker == '+') {
+
+                                    job.marker = '-';
+
+                                } else if (job.marker == '-') {
+
+                                    job.marker = ' ';
+                                }
+                            }
+
+                            backgroundJobs.add(
                                     new BackgroundJob(
                                             nextJobNumber,
                                             process,
-                                            input.trim()
-                                    );
-
-                            backgroundJobs.add(job);
+                                            input.trim(),
+                                            '+'
+                                    )
+                            );
 
                             System.out.println(
                                     "[" +
@@ -389,107 +373,90 @@ public class Main {
         }
     }
 
+
     /*
-     * ============================================================
-     * REAP COMPLETED JOBS
-     * ============================================================
+     * Reap every completed background job.
      *
      * fromJobsBuiltin == false:
-     *
-     *     Automatic reaping before a prompt.
-     *
-     *     If '+' completes:
-     *
-     *         newest remaining -> '+'
-     *
+     *     Automatic reaping before the next prompt.
      *
      * fromJobsBuiltin == true:
-     *
-     *     Reaping caused by `jobs`.
-     *
-     *     If '+' completes:
-     *
-     *         newest remaining -> '-'
-     *
-     *
-     * The important part is that completed jobs save their
-     * ORIGINAL marker before being removed.
+     *     Reaping caused by the "jobs" builtin.
      */
-    private static ReapResult reapCompletedJobs(
+    private static List<BackgroundJob> reapCompletedJobs(
             List<BackgroundJob> backgroundJobs,
             boolean fromJobsBuiltin)
             throws InterruptedException {
 
-        List<BackgroundJob> sortedJobs =
-                new ArrayList<>(backgroundJobs);
-
-        sortedJobs.sort(
-                (a, b) ->
-                        Integer.compare(
-                                a.number,
-                                b.number
-                        )
-        );
-
-        /*
-         * Calculate markers BEFORE removing completed jobs.
-         */
-        Map<Integer, Character> markers =
-                calculateMarkers(sortedJobs);
-
-        List<CompletedJob> completedJobs =
+        List<BackgroundJob> completedJobs =
                 new ArrayList<>();
 
-        boolean plusCompleted = false;
-
         /*
-         * Find every completed process.
+         * First find ALL jobs that have completed.
          */
-        for (BackgroundJob job : sortedJobs) {
+        for (BackgroundJob job : backgroundJobs) {
 
             if (!job.process.isAlive()) {
 
                 job.process.waitFor();
 
-                char marker =
-                        markers.getOrDefault(
-                                job.number,
-                                ' '
-                        );
+                completedJobs.add(job);
+            }
+        }
 
-                completedJobs.add(
-                        new CompletedJob(
-                                job,
-                                marker
-                        )
-                );
+        if (completedJobs.isEmpty()) {
+            return completedJobs;
+        }
 
-                if (marker == '+') {
-                    plusCompleted = true;
-                }
+        /*
+         * Remember whether the '+' job completed.
+         *
+         * This must be determined BEFORE removing jobs.
+         */
+        boolean plusCompleted = false;
+
+        for (BackgroundJob job : completedJobs) {
+
+            if (job.marker == '+') {
+
+                plusCompleted = true;
+                break;
             }
         }
 
         /*
-         * Nothing finished.
+         * Remove completed jobs from the active job table.
+         *
+         * The completed objects remain in completedJobs,
+         * so their ORIGINAL marker can be printed.
          */
-        if (completedJobs.isEmpty()) {
-            return new ReapResult(completedJobs);
+        backgroundJobs.removeAll(completedJobs);
+
+        /*
+         * If the '+' job did NOT complete:
+         *
+         * Example:
+         *
+         * [1]   Running
+         * [2]-  Done
+         * [3]+  Running
+         *
+         * Job 2 is removed, but markers stay:
+         *
+         * [1]   Running
+         * [3]+  Running
+         *
+         * Nothing needs to be changed.
+         */
+        if (!plusCompleted) {
+            return completedJobs;
         }
 
         /*
-         * Remove all completed jobs from the active table.
-         */
-        for (CompletedJob completed :
-                completedJobs) {
-
-            backgroundJobs.remove(
-                    completed.job
-            );
-        }
-
-        /*
-         * Re-sort the remaining active jobs.
+         * The '+' job completed.
+         *
+         * We now need to assign the marker to the
+         * newest remaining job.
          */
         backgroundJobs.sort(
                 (a, b) ->
@@ -500,152 +467,72 @@ public class Main {
         );
 
         /*
-         * --------------------------------------------------------
-         * CASE 1: '+' DID NOT COMPLETE
-         * --------------------------------------------------------
-         *
-         * Example:
-         *
-         * [1]   Running
-         * [2]-  Done
-         * [3]+  Running
-         *
-         * After removing job 2:
-         *
-         * [1]   Running
-         * [3]+  Running
-         *
-         * Therefore simply recalculate normal markers.
+         * Clear all active markers first.
          */
-        if (!plusCompleted) {
-            return new ReapResult(completedJobs);
+        for (BackgroundJob job : backgroundJobs) {
+            job.marker = ' ';
         }
 
-        /*
-         * --------------------------------------------------------
-         * CASE 2: '+' COMPLETED
-         * --------------------------------------------------------
-         */
-        if (backgroundJobs.isEmpty()) {
-            return new ReapResult(completedJobs);
-        }
+        if (!backgroundJobs.isEmpty()) {
 
-        /*
-         * AUTOMATIC REAPING
-         *
-         * Example:
-         *
-         * [1]-  Running
-         * [2]+  Done
-         *
-         * becomes:
-         *
-         * [1]+  Running
-         */
-        if (!fromJobsBuiltin) {
+            BackgroundJob newest =
+                    backgroundJobs.get(
+                            backgroundJobs.size() - 1
+                    );
 
             /*
-             * Markers are calculated dynamically, so nothing
-             * actually needs to be stored here.
+             * IMPORTANT DIFFERENCE:
              *
-             * The newest active job will be '+' when
-             * printRunningJobs() is called.
+             * Automatic reap:
+             *     newest -> +
+             *
+             * jobs builtin:
+             *     newest -> -
              */
-            return new ReapResult(completedJobs);
+            if (fromJobsBuiltin) {
+                newest.marker = '-';
+            } else {
+                newest.marker = '+';
+            }
         }
 
-        /*
-         * JOBS BUILTIN
-         *
-         * Example from RQ2:
-         *
-         * [1]   Running
-         * [2]-  Done
-         * [3]+  Done
-         *
-         * After job 3 is reaped:
-         *
-         * [1]-  Running
-         *
-         * This means that when '+' is reaped through `jobs`,
-         * the newest remaining job is '-' rather than '+'.
-         *
-         * We don't store that marker permanently.
-         *
-         * Instead, set a temporary marker state for the
-         * currently active jobs.
-         *
-         * This state is handled by the special
-         * jobsMarkerOverride below.
-         */
-        jobsMarkerOverride = true;
-
-        return new ReapResult(completedJobs);
+        return completedJobs;
     }
 
-    /*
-     * This flag is used only for the special case:
-     *
-     * `jobs` reaps the current '+' job.
-     *
-     * In that situation the newest remaining job must be '-'.
-     */
-    private static boolean jobsMarkerOverride = false;
 
     /*
-     * Calculate the normal markers:
+     * Print the jobs builtin output.
      *
-     * oldest jobs       -> ' '
-     * second newest     -> '-'
-     * newest            -> '+'
+     * RUNNING jobs are printed first.
+     * COMPLETED jobs are printed second.
+     *
+     * This ordering is important for RQ2.
      */
-    private static Map<Integer, Character> calculateMarkers(
-            List<BackgroundJob> jobs) {
+    private static void printJobs(
+            List<BackgroundJob> runningJobs,
+            List<BackgroundJob> completedJobs) {
 
-        Map<Integer, Character> markers =
-                new HashMap<>();
+        /*
+         * Running jobs first.
+         */
+        for (BackgroundJob job : runningJobs) {
 
-        int size = jobs.size();
-
-        for (int i = 0; i < size; i++) {
-
-            BackgroundJob job =
-                    jobs.get(i);
-
-            char marker = ' ';
-
-            if (i == size - 1) {
-
-                marker = '+';
-
-            } else if (i == size - 2) {
-
-                marker = '-';
-            }
-
-            markers.put(
+            System.out.printf(
+                    "[%d]%c  %-24s%s%n",
                     job.number,
-                    marker
+                    job.marker,
+                    "Running",
+                    job.command
             );
         }
 
-        return markers;
-    }
-
-    /*
-     * Print completed jobs.
-     *
-     * The marker stored in CompletedJob is the marker
-     * from BEFORE the job was removed.
-     */
-    private static void printCompletedJobs(
-            List<CompletedJob> completedJobs) {
-
-        for (CompletedJob completed :
-                completedJobs) {
-
-            BackgroundJob job =
-                    completed.job;
+        /*
+         * Completed jobs second.
+         *
+         * Their marker is the marker they had
+         * when they were reaped.
+         */
+        for (BackgroundJob job : completedJobs) {
 
             String command =
                     job.command.replaceAll(
@@ -656,97 +543,37 @@ public class Main {
             System.out.printf(
                     "[%d]%c  %-24s%s%n",
                     job.number,
-                    completed.marker,
+                    job.marker,
                     "Done",
                     command
             );
         }
     }
 
+
     /*
-     * Print all currently running jobs.
+     * Print jobs automatically reaped before a prompt.
+     *
+     * Only completed jobs are printed here.
      */
-    private static void printRunningJobs(
-            List<BackgroundJob> runningJobs) {
+    private static void printCompletedJobs(
+            List<BackgroundJob> completedJobs) {
 
-        if (runningJobs.isEmpty()) {
-            jobsMarkerOverride = false;
-            return;
-        }
+        for (BackgroundJob job : completedJobs) {
 
-        List<BackgroundJob> sortedJobs =
-                new ArrayList<>(runningJobs);
-
-        sortedJobs.sort(
-                (a, b) ->
-                        Integer.compare(
-                                a.number,
-                                b.number
-                        )
-        );
-
-        Map<Integer, Character> markers =
-                calculateMarkers(sortedJobs);
-
-        /*
-         * Special RQ2 behavior:
-         *
-         * When `jobs` itself reaped '+', the newest
-         * remaining job must be '-'.
-         */
-        if (jobsMarkerOverride) {
-
-            for (BackgroundJob job :
-                    sortedJobs) {
-
-                markers.put(
-                        job.number,
-                        ' '
-                );
-            }
-
-            /*
-             * Newest remaining job -> '-'
-             */
-            BackgroundJob newest =
-                    sortedJobs.get(
-                            sortedJobs.size() - 1
-                    );
-
-            markers.put(
-                    newest.number,
-                    '-'
-            );
-
-            /*
-             * If there are two or more jobs, the
-             * second newest remains blank in this
-             * special state.
-             */
-        }
-
-        for (BackgroundJob job :
-                sortedJobs) {
-
-            char marker =
-                    markers.getOrDefault(
-                            job.number,
-                            ' '
+            String command =
+                    job.command.replaceAll(
+                            "\\s*&$",
+                            ""
                     );
 
             System.out.printf(
                     "[%d]%c  %-24s%s%n",
                     job.number,
-                    marker,
-                    "Running",
-                    job.command
+                    job.marker,
+                    "Done",
+                    command
             );
         }
-
-        /*
-         * The special state only applies to this one
-         * `jobs` command.
-         */
-        jobsMarkerOverride = false;
     }
 }
