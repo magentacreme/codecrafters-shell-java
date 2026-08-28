@@ -75,4 +75,9 @@ public class DeclareCommand implements Command
     {
         return "declare";
     }
+
+    public String getVariable(String name)
+    {
+        return variables.get(name);
+    }
 }

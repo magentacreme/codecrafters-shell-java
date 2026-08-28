@@ -68,6 +68,7 @@ public class Main
     private static AutoCompleteRegistry autoCompleteRegistry;
     private static PathResolver pathResolver;
     private static Environment environment;
+    private static DeclareCommand declareCommand;
     private static final List<String> history = new ArrayList<>();
 
     public static void main(String[] args) throws Exception
@@ -78,6 +79,7 @@ public class Main
         jobsPrinter = new JobsPrinter(jobRegistry);
         environment = new Environment();
         autoCompleteRegistry = new AutoCompleteRegistry();
+        declareCommand = new DeclareCommand();
 
         String historyFile = System.getenv("HISTFILE");
         if (historyFile != null)
@@ -124,7 +126,7 @@ public class Main
                 new CompleteCommand(environment, autoCompleteRegistry),
                 new JobsCommand(jobsPrinter),
                 new HistoryCommand(history),
-                new DeclareCommand()
+                declareCommand
         );
 
         commands.forEach(commandRegistry::registerBuiltIn);
@@ -357,7 +359,9 @@ public class Main
 
     private static void parse(String input) throws IOException
     {
-        List<String> args = ArgumentParser.parseArgs(input);
+        List<String> args = ArgumentParser.parseArgs(input).stream()
+            .map(Main::expandVariables)
+            .toList();
 
         int pipelineIndex = args.indexOf("|");
         if (pipelineIndex != -1)
@@ -388,6 +392,51 @@ public class Main
         {
             System.out.println(commandName + ": command not found");
         }
+    }
+
+    private static String expandVariables(String value)
+    {
+        StringBuilder expanded = new StringBuilder();
+        int index = 0;
+        while (index < value.length())
+        {
+            char character = value.charAt(index);
+            if (character != '$' || index + 1 >= value.length())
+            {
+                expanded.append(character);
+                index++;
+                continue;
+            }
+
+            char firstNameCharacter = value.charAt(index + 1);
+            if (!Character.isLetter(firstNameCharacter) && firstNameCharacter != '_')
+            {
+                expanded.append(character);
+                index++;
+                continue;
+            }
+
+            int nameEnd = index + 2;
+            while (nameEnd < value.length())
+            {
+                char nameCharacter = value.charAt(nameEnd);
+                if (!Character.isLetterOrDigit(nameCharacter) && nameCharacter != '_')
+                {
+                    break;
+                }
+                nameEnd++;
+            }
+
+            String variableName = value.substring(index + 1, nameEnd);
+            String variableValue = declareCommand.getVariable(variableName);
+            if (variableValue != null)
+            {
+                expanded.append(variableValue);
+            }
+            index = nameEnd;
+        }
+
+        return expanded.toString();
     }
 
     private static void executePipeline(List<String> args, String input)
