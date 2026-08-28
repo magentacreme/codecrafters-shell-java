@@ -1,4 +1,6 @@
 import java.io.File;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Set;
 
 public class Main {
@@ -18,6 +20,7 @@ public class Main {
     );
         
         File currentDirectory = new File(System.getProperty("user.dir"));
+        Map<String, String> completionScripts = new HashMap<>();
 
         while (true) {
             System.out.print("$ ");
@@ -79,8 +82,15 @@ public class Main {
                     }
                 }
                 case "complete" -> {
-                    if (parts.length >= 3 && parts[1].equals("-p")) {
-                        System.out.println("complete: " + parts[2] + ": no completion specification");
+                    if (parts.length >= 4 && parts[1].equals("-C")) {
+                        completionScripts.put(parts[3], parts[2]);
+                    } else if (parts.length >= 3 && parts[1].equals("-p")) {
+                        String script = completionScripts.get(parts[2]);
+                        if (script == null) {
+                            System.out.println("complete: " + parts[2] + ": no completion specification");
+                        } else {
+                            System.out.println("complete -C '" + script + "' " + parts[2]);
+                        }
                     }
                 }
                 default -> {
