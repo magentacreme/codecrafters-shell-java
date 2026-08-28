@@ -87,8 +87,12 @@ public class Main {
                 }
                 case "pwd" -> System.out.println(currentDirectory.getAbsolutePath());
                 case "jobs" -> {
-                    for (BackgroundJob job : backgroundJobs) {
-                        System.out.printf("[%d]+  %-24s%s%n", job.number, "Running", job.command);
+                    for (int i = 0; i < backgroundJobs.size(); i++) {
+                        BackgroundJob job = backgroundJobs.get(i);
+                        String marker = i == backgroundJobs.size() - 1
+                                ? "+"
+                                : i == backgroundJobs.size() - 2 ? "-" : " ";
+                        System.out.printf("[%d]%s  %-24s%s%n", job.number, marker, "Running", job.command);
                     }
                 }
                 case "cd" -> {
