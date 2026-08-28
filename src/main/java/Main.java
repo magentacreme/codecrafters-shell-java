@@ -358,7 +358,7 @@ public class Main {
      *
      * Completed jobs are removed from backgroundJobs.
      */
-    private static List<BackgroundJob> reapCompletedJobs(
+private static List<BackgroundJob> reapCompletedJobs(
         List<BackgroundJob> backgroundJobs)
         throws InterruptedException {
 
@@ -376,7 +376,7 @@ public class Main {
     }
 
     /*
-     * Remember whether the + job completed.
+     * Check whether the + job completed.
      */
     boolean plusJobCompleted = false;
 
@@ -388,7 +388,7 @@ public class Main {
     }
 
     /*
-     * Remove completed jobs.
+     * Remove completed jobs from the active table.
      */
     backgroundJobs.removeAll(completedJobs);
 
@@ -397,25 +397,23 @@ public class Main {
         /*
          * The + job completed.
          *
-         * The highest remaining job becomes +.
-         * The second-highest remaining job becomes -.
+         * The newest remaining job becomes '-'.
+         *
+         * Do NOT make it '+' because the completed job
+         * still needs to be displayed as '+'.
          */
-        backgroundJobs.sort(
-                (a, b) -> Integer.compare(a.number, b.number)
-        );
-
         for (BackgroundJob job : backgroundJobs) {
             job.marker = ' ';
         }
 
-        int size = backgroundJobs.size();
+        if (!backgroundJobs.isEmpty()) {
+            backgroundJobs.sort(
+                    (a, b) -> Integer.compare(a.number, b.number)
+            );
 
-        if (size >= 1) {
-            backgroundJobs.get(size - 1).marker = '+';
-        }
-
-        if (size >= 2) {
-            backgroundJobs.get(size - 2).marker = '-';
+            backgroundJobs.get(
+                    backgroundJobs.size() - 1
+            ).marker = '-';
         }
 
     } else {
@@ -423,8 +421,9 @@ public class Main {
         /*
          * A non-+ job completed.
          *
-         * Keep the existing + job.
-         * Remove the old - marker.
+         * Its Done entry keeps its old '-'.
+         * Clear '-' from remaining active jobs.
+         * The current '+' remains '+'.
          */
         for (BackgroundJob job : backgroundJobs) {
             if (job.marker == '-') {
@@ -434,85 +433,49 @@ public class Main {
     }
 
     return completedJobs;
-}
-    /*
+}    
+/*
      * Print completed and/or running jobs.
      */
     private static void printJobStatuses(
-            List<BackgroundJob> completedJobs,
-            List<BackgroundJob> runningJobs,
-            boolean includeRunning) {
+        List<BackgroundJob> completedJobs,
+        List<BackgroundJob> runningJobs,
+        boolean includeRunning) {
 
-        List<BackgroundJob> allJobs =
-                new ArrayList<>();
+    List<BackgroundJob> allJobs = new ArrayList<>();
 
-        /*
-         * Include completed jobs first.
-         */
-        allJobs.addAll(
-                completedJobs
-        );
+    allJobs.addAll(completedJobs);
 
-        /*
-         * The jobs builtin also displays running jobs.
-         */
-        if (includeRunning) {
-
-            allJobs.addAll(
-                    runningJobs
-            );
-        }
-
-        /*
-         * Job numbers must be printed in ascending order.
-         */
-        allJobs.sort(
-                (a, b) ->
-                        Integer.compare(
-                                a.number,
-                                b.number
-                        )
-        );
-
-        for (BackgroundJob job :
-                allJobs) {
-
-            boolean running =
-                    job.process.isAlive();
-
-            String status;
-            String command;
-
-            if (running) {
-
-                status = "Running";
-
-                /*
-                 * Running jobs retain &.
-                 */
-                command = job.command;
-
-            } else {
-
-                status = "Done";
-
-                /*
-                 * Done jobs do not display &.
-                 */
-                command =
-                        job.command.replaceAll(
-                                "\\s*&$",
-                                ""
-                        );
-            }
-
-            System.out.printf(
-                    "[%d]%c  %-24s%s%n",
-                    job.number,
-                    job.marker,
-                    status,
-                    command
-            );
-        }
+    if (includeRunning) {
+        allJobs.addAll(runningJobs);
     }
+
+    allJobs.sort(
+            (a, b) -> Integer.compare(a.number, b.number)
+    );
+
+    for (BackgroundJob job : allJobs) {
+
+        boolean running = job.process.isAlive();
+
+        String status;
+        String command;
+
+        if (running) {
+            status = "Running";
+            command = job.command;
+        } else {
+            status = "Done";
+            command = job.command.replaceAll("\\s*&$", "");
+        }
+
+        System.out.printf(
+                "[%d]%c  %-24s%s%n",
+                job.number,
+                job.marker,
+                status,
+                command
+        );
+    }
+}
 }
