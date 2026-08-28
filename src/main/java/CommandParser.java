@@ -70,7 +70,13 @@ if (c == '\t') {
                     continue;
                 }
 
-                if (!waitingForSecondTab) {
+                String commonPrefix = longestCommonPrefix(matches);
+                if (commonPrefix.length() > currentWord.length()) {
+                    String remaining = commonPrefix.substring(currentWord.length());
+                    System.out.print(remaining);
+                    input.append(remaining);
+                    waitingForSecondTab = false;
+                } else if (!waitingForSecondTab) {
                     System.out.print("\007");
                     waitingForSecondTab = true;
                 } else {
