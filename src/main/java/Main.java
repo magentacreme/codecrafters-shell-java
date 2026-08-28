@@ -195,28 +195,28 @@ private static void printJobStatuses(
         List<BackgroundJob> runningJobs,
         boolean includeRunning) {
 
-    for (BackgroundJob job : completedJobs) {
+    List<BackgroundJob> allJobs = new ArrayList<>();
+
+    allJobs.addAll(completedJobs);
+
+    if (includeRunning) {
+        allJobs.addAll(runningJobs);
+    }
+
+    allJobs.sort((a, b) -> Integer.compare(a.number, b.number));
+
+    for (BackgroundJob job : allJobs) {
         String command = job.command.replaceAll("\\s*&$", "");
+
+        String status = job.process.isAlive() ? "Running" : "Done";
 
         System.out.printf(
                 "[%d]%c  %-24s%s%n",
                 job.number,
                 job.marker,
-                "Done",
+                status,
                 command
         );
-    }
-
-    if (includeRunning) {
-        for (BackgroundJob job : runningJobs) {
-            System.out.printf(
-                    "[%d]%c  %-24s%s%n",
-                    job.number,
-                    job.marker,
-                    "Running",
-                    job.command
-            );
-        }
     }
 }
 }
