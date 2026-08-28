@@ -68,21 +68,27 @@ if (c == '\t') {
     // One match
     if (matches.size() == 1) {
 
-        String completion = matches.get(0);
+    String completion = matches.get(0);
 
-        String remaining =
-                completion.substring(partial.length());
+    String remaining =
+            completion.substring(partial.length());
 
-        System.out.print(remaining);
+    System.out.print(remaining);
+
+    input.append(remaining);
+
+    if (completion.endsWith("/")) {
+        // Directory: no space
+    } else {
+        // File: add space
         System.out.print(" ");
-
-        input.append(remaining);
         input.append(" ");
-
-        waitingForSecondTab = false;
-
-        continue;
     }
+
+    waitingForSecondTab = false;
+
+    continue;
+}
 
     // Multiple matches
     String commonPrefix =
@@ -233,29 +239,25 @@ if (c == '\t') {
 
     for (File file : files) {
 
-        if (file.getName().startsWith(prefix)) {
-
-            if (lastSlash == -1) {
-
-                // Example:
-                // pineappl -> pineapple-96.txt
-                matches.add(file.getName());
-
-            } else {
-
-                // Example:
-                // pear/mango/g -> pear/mango/grape.txt
-                matches.add(
-                        directoryPath + file.getName()
-                );
-            }
+        if (!file.getName().startsWith(prefix)) {
+            continue;
         }
+
+        String completion =
+                directoryPath + file.getName();
+
+        // Directory -> include trailing /
+        if (file.isDirectory()) {
+            completion += "/";
+        }
+
+        matches.add(completion);
     }
 
     matches.sort(String::compareTo);
 
     return matches;
-}
+}    
     
     private static String longestCommonPrefix(
             ArrayList<String> strings) {
