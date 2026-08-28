@@ -1,7 +1,6 @@
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -14,11 +13,13 @@ public class Main {
         private final int number;
         private final Process process;
         private final String command;
+        private char marker;
 
-        private BackgroundJob(int number, Process process, String command) {
+        private BackgroundJob(int number, Process process, String command, char marker) {
             this.number = number;
             this.process = process;
             this.command = command;
+            this.marker = marker;
         }
     }
 
@@ -132,7 +133,12 @@ public class Main {
                     if (executablePath != null) {
                         if (isBackground) {
                             Process process = ProcessExecutor.startCommand(parts, currentDirectory);
-                            backgroundJobs.add(new BackgroundJob(nextJobNumber, process, input.trim()));
+                            for (BackgroundJob job : backgroundJobs) {
+                                if (job.marker == '+') {
+                                    job.marker = '-';
+                                }
+                            }
+                            backgroundJobs.add(new BackgroundJob(nextJobNumber, process, input.trim(), '+'));
                             System.out.println("[" + nextJobNumber + "] " + process.pid());
                             nextJobNumber++;
                         } else {
@@ -154,28 +160,25 @@ public class Main {
                 completedJobs.add(job);
             }
         }
+        backgroundJobs.removeAll(completedJobs);
         return completedJobs;
     }
 
     private static void printJobStatuses(
             List<BackgroundJob> completedJobs, List<BackgroundJob> runningJobs, boolean includeRunning) {
-        List<BackgroundJob> jobs = new ArrayList<>(completedJobs);
-        jobs.addAll(runningJobs);
-        jobs.sort(Comparator.comparingInt(job -> job.number));
+        for (BackgroundJob job : completedJobs) {
+            String command = job.command.replaceAll("\\s*&$", "");
+            System.out.printf("[%d]%c  %-24s%s%n", job.number, job.marker, "Done", command);
+        }
 
-        for (int i = 0; i < jobs.size(); i++) {
-            BackgroundJob job = jobs.get(i);
-            boolean completed = completedJobs.contains(job);
-            if (!completed && !includeRunning) {
-                continue;
+        if (includeRunning) {
+            for (int i = 0; i < runningJobs.size(); i++) {
+                BackgroundJob job = runningJobs.get(i);
+                String marker = i == runningJobs.size() - 1
+                        ? "+"
+                        : i == runningJobs.size() - 2 ? "-" : " ";
+                System.out.printf("[%d]%s  %-24s%s%n", job.number, marker, "Running", job.command);
             }
-
-            String marker = i == jobs.size() - 1
-                    ? "+"
-                    : i == jobs.size() - 2 ? "-" : " ";
-            String status = completed ? "Done" : "Running";
-            String command = completed ? job.command.replaceAll("\\s*&$", "") : job.command;
-            System.out.printf("[%d]%s  %-24s%s%n", job.number, marker, status, command);
         }
     }
 }
