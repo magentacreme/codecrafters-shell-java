@@ -60,11 +60,12 @@ public class Main {
                 new ArrayList<>();
 
         int nextJobNumber = 1;
+        boolean[] hasReapedEarlierJob = {false};
 
         while (true) {
 
             List<BackgroundJob> completedJobs =
-                    reapCompletedJobs(backgroundJobs);
+                    reapCompletedJobs(backgroundJobs, hasReapedEarlierJob);
 
             printJobStatuses(
                     completedJobs,
@@ -171,7 +172,8 @@ public class Main {
 
                     List<BackgroundJob> reapedJobs =
                             reapCompletedJobs(
-                                    backgroundJobs
+                                    backgroundJobs,
+                                    hasReapedEarlierJob
                             );
 
                     printJobStatuses(
@@ -345,7 +347,8 @@ public class Main {
     }
 
     private static List<BackgroundJob> reapCompletedJobs(
-        List<BackgroundJob> backgroundJobs)
+        List<BackgroundJob> backgroundJobs,
+        boolean[] hasReapedEarlierJob)
         throws InterruptedException {
 
     List<BackgroundJob> completedJobs = new ArrayList<>();
@@ -360,6 +363,9 @@ public class Main {
     if (completedJobs.isEmpty()) {
         return completedJobs;
     }
+
+    boolean promotePlus = !hasReapedEarlierJob[0];
+    hasReapedEarlierJob[0] = true;
 
     boolean plusCompleted = false;
 
@@ -379,13 +385,13 @@ public class Main {
     if (plusCompleted) {
         /*
          * The current '+' job exited.
-         * The newest remaining job takes '+', and second-newest takes '-'.
+         * Promote the newest remaining job unless an earlier job was reaped.
          */
         int size = backgroundJobs.size();
         for (int i = 0; i < size; i++) {
-            if (i == size - 1) {
+            if (i == size - 1 && promotePlus) {
                 backgroundJobs.get(i).marker = '+';
-            } else if (i == size - 2) {
+            } else if (i == size - 1 || i == size - 2) {
                 backgroundJobs.get(i).marker = '-';
             } else {
                 backgroundJobs.get(i).marker = ' ';
