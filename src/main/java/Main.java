@@ -152,45 +152,62 @@ public class Main {
         }
     }
 
-    private static List<BackgroundJob> reapCompletedJobs(List<BackgroundJob> backgroundJobs) throws InterruptedException {
-        List<BackgroundJob> completedJobs = new ArrayList<>();
-        for (BackgroundJob job : backgroundJobs) {
-            if (!job.process.isAlive()) {
-                job.process.waitFor();
-                completedJobs.add(job);
-            }
+    private static List<BackgroundJob> reapCompletedJobs(
+        List<BackgroundJob> backgroundJobs) throws InterruptedException {
+
+    List<BackgroundJob> completedJobs = new ArrayList<>();
+
+    // Find jobs that have exited.
+    for (BackgroundJob job : backgroundJobs) {
+        if (!job.process.isAlive()) {
+            job.process.waitFor();
+            completedJobs.add(job);
         }
-        for (BackgroundJob completedJob : completedJobs) {
-            if (completedJob.marker == '-') {
-                for (BackgroundJob job : backgroundJobs) {
-                    if (job.marker == '-' && !completedJobs.contains(job)) {
-                        job.marker = ' ';
-                    }
-                }
-            } else if (completedJob.marker == '+') {
-                for (BackgroundJob job : backgroundJobs) {
-                    if (job.marker == '-' && !completedJobs.contains(job)) {
-                        job.marker = '+';
-                        break;
-                    }
-                }
-            }
-        }
-        backgroundJobs.removeAll(completedJobs);
-        return completedJobs;
     }
 
-    private static void printJobStatuses(
-            List<BackgroundJob> completedJobs, List<BackgroundJob> runningJobs, boolean includeRunning) {
-        for (BackgroundJob job : completedJobs) {
-            String command = job.command.replaceAll("\\s*&$", "");
-            System.out.printf("[%d]%c  %-24s%s%n", job.number, job.marker, "Done", command);
-        }
+    // Remove completed jobs from the job table.
+    backgroundJobs.removeAll(completedJobs);
 
-        if (includeRunning) {
-            for (BackgroundJob job : runningJobs) {
-                System.out.printf("[%d]%c  %-24s%s%n", job.number, job.marker, "Running", job.command);
-            }
+    // Reset markers of remaining jobs.
+    for (BackgroundJob job : backgroundJobs) {
+        job.marker = ' ';
+    }
+
+    // The newest remaining job gets '+'.
+    if (!backgroundJobs.isEmpty()) {
+        backgroundJobs.get(backgroundJobs.size() - 1).marker = '+';
+    }
+
+    return completedJobs;
+}
+
+private static void printJobStatuses(
+        List<BackgroundJob> completedJobs,
+        List<BackgroundJob> runningJobs,
+        boolean includeRunning) {
+
+    for (BackgroundJob job : completedJobs) {
+        String command = job.command.replaceAll("\\s*&$", "");
+
+        System.out.printf(
+                "[%d]%c  %-24s%s%n",
+                job.number,
+                job.marker,
+                "Done",
+                command
+        );
+    }
+
+    if (includeRunning) {
+        for (BackgroundJob job : runningJobs) {
+            System.out.printf(
+                    "[%d]%c  %-24s%s%n",
+                    job.number,
+                    job.marker,
+                    "Running",
+                    job.command
+            );
         }
     }
+}
 }
