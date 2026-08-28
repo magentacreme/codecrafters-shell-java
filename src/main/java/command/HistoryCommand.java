@@ -2,8 +2,10 @@ package command;
 
 import java.io.IOException;
 import java.io.PrintStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.util.List;
 
 public class HistoryCommand implements Command
@@ -21,6 +23,11 @@ public class HistoryCommand implements Command
         if (!args.isEmpty() && args.getFirst().equals("-r"))
         {
             readHistoryFile(args, stderr);
+            return;
+        }
+        if (!args.isEmpty() && args.getFirst().equals("-w"))
+        {
+            writeHistoryFile(args, stderr);
             return;
         }
 
@@ -50,6 +57,30 @@ public class HistoryCommand implements Command
             Files.readAllLines(Path.of(args.get(1))).stream()
                     .filter(line -> !line.isEmpty())
                     .forEach(history::add);
+        }
+        catch (IOException e)
+        {
+            stderr.println("history: " + e.getMessage());
+        }
+    }
+
+    private void writeHistoryFile(List<String> args, PrintStream stderr)
+    {
+        if (args.size() < 2)
+        {
+            stderr.println("history: -w: option requires an argument");
+            return;
+        }
+
+        try
+        {
+            Files.write(
+                    Path.of(args.get(1)),
+                    history,
+                    StandardCharsets.UTF_8,
+                    StandardOpenOption.CREATE,
+                    StandardOpenOption.TRUNCATE_EXISTING
+            );
         }
         catch (IOException e)
         {
