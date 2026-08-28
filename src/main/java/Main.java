@@ -201,7 +201,9 @@ private static List<BackgroundJob> reapCompletedJobs(
     }
 
     return completedJobs;
-}private static void printJobStatuses(
+}
+
+private static void printJobStatuses(
         List<BackgroundJob> completedJobs,
         List<BackgroundJob> runningJobs,
         boolean includeRunning) {
@@ -217,16 +219,24 @@ private static List<BackgroundJob> reapCompletedJobs(
     allJobs.sort((a, b) -> Integer.compare(a.number, b.number));
 
     for (BackgroundJob job : allJobs) {
-        String command = job.command;
 
-        String status = job.process.isAlive() ? "Running" : "Done";
+        boolean running = job.process.isAlive();
 
-        char marker = job.marker;
+        String command;
+        String status;
+
+        if (running) {
+            status = "Running";
+            command = job.command;
+        } else {
+            status = "Done";
+            command = job.command.replaceAll("\\s*&$", "");
+        }
 
         System.out.printf(
-                "[%d]%c  %-24s%s%n",
+                "[%d]%c  %-20s%s%n",
                 job.number,
-                marker == ' ' ? ' ' : marker,
+                job.marker,
                 status,
                 command
         );
