@@ -1,3 +1,4 @@
+```java
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -60,12 +61,17 @@ public class Main {
                 new ArrayList<>();
 
         int nextJobNumber = 1;
-        boolean[] hasReapedEarlierJob = {false};
 
         while (true) {
 
+            /*
+             * Automatic reaping before every prompt.
+             */
             List<BackgroundJob> completedJobs =
-                    reapCompletedJobs(backgroundJobs, hasReapedEarlierJob);
+                    reapCompletedJobs(
+                            backgroundJobs,
+                            false
+                    );
 
             printJobStatuses(
                     completedJobs,
@@ -170,10 +176,13 @@ public class Main {
 
                 case "jobs" -> {
 
+                    /*
+                     * jobs builtin performs its own reaping.
+                     */
                     List<BackgroundJob> reapedJobs =
                             reapCompletedJobs(
                                     backgroundJobs,
-                                    hasReapedEarlierJob
+                                    true
                             );
 
                     printJobStatuses(
@@ -277,168 +286,317 @@ public class Main {
 
                 default -> {
 
-    String executablePath =
-            ProcessExecutor.findExecutable(
-                    command
-            );
+                    String executablePath =
+                            ProcessExecutor.findExecutable(
+                                    command
+                            );
 
-    if (executablePath != null) {
+                    if (executablePath != null) {
 
-        if (isBackground) {
+                        if (isBackground) {
 
-            Process process =
-                    ProcessExecutor.startCommand(
-                            parts,
-                            currentDirectory
-                    );
+                            Process process =
+                                    ProcessExecutor.startCommand(
+                                            parts,
+                                            currentDirectory
+                                    );
+
+                            /*
+                             * When starting a new background job:
+                             *
+                             * old '+' -> '-'
+                             * old '-' -> blank
+                             * new job -> '+'
+                             */
+                            for (BackgroundJob job :
+                                    backgroundJobs) {
+
+                                if (job.marker == '+') {
+
+                                    job.marker = '-';
+
+                                } else if (job.marker == '-') {
+
+                                    job.marker = ' ';
+                                }
+                            }
+
+                            backgroundJobs.add(
+                                    new BackgroundJob(
+                                            nextJobNumber,
+                                            process,
+                                            input.trim(),
+                                            '+'
+                                    )
+                            );
+
+                            System.out.println(
+                                    "[" +
+                                    nextJobNumber +
+                                    "] " +
+                                    process.pid()
+                            );
+
+                            nextJobNumber++;
+
+                        } else {
+
+                            ProcessExecutor.executeCommand(
+                                    parts,
+                                    currentDirectory
+                            );
+                        }
+
+                    } else {
+
+                        System.out.println(
+                                command +
+                                ": command not found"
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    /*
+     * Reap all completed jobs.
+     *
+     * fromJobsBuiltin == false:
+     *     Called automatically before a prompt.
+     *
+     * fromJobsBuiltin == true:
+     *     Called by the jobs builtin.
+     */
+    private static List<BackgroundJob> reapCompletedJobs(
+            List<BackgroundJob> backgroundJobs,
+            boolean fromJobsBuiltin)
+            throws InterruptedException {
+
+        List<BackgroundJob> completedJobs =
+                new ArrayList<>();
+
+        /*
+         * Find every completed process.
+         */
+        for (BackgroundJob job : backgroundJobs) {
+
+            if (!job.process.isAlive()) {
+
+                job.process.waitFor();
+
+                completedJobs.add(job);
+            }
+        }
+
+        if (completedJobs.isEmpty()) {
+            return completedJobs;
+        }
+
+        /*
+         * Determine whether the current '+' job
+         * is one of the completed jobs.
+         */
+        boolean plusCompleted = false;
+
+        for (BackgroundJob job : completedJobs) {
+
+            if (job.marker == '+') {
+
+                plusCompleted = true;
+                break;
+            }
+        }
+
+        /*
+         * Remove completed jobs from the active table.
+         *
+         * Their marker remains unchanged in completedJobs,
+         * allowing us to print:
+         *
+         * [2]+ Done
+         *
+         * or
+         *
+         * [2]- Done
+         */
+        backgroundJobs.removeAll(completedJobs);
+
+        /*
+         * Handle marker recalculation.
+         */
+        if (plusCompleted) {
 
             /*
-             * Shift existing markers down:
-             * '-' becomes ' '
-             * '+' becomes '-'
+             * The current '+' job completed.
              */
-            for (BackgroundJob job : backgroundJobs) {
-                if (job.marker == '-') {
+            if (fromJobsBuiltin) {
+
+                /*
+                 * When reaping from `jobs`, the newest remaining
+                 * job gets '-'.
+                 *
+                 * Example:
+                 *
+                 * [1]  Running
+                 * [2]-  Done
+                 * [3]+  Running
+                 *
+                 * job 3 completes:
+                 *
+                 * [1]-  Running
+                 * [3]+  Done
+                 */
+                for (BackgroundJob job :
+                        backgroundJobs) {
+
                     job.marker = ' ';
-                } else if (job.marker == '+') {
-                    job.marker = '-';
+                }
+
+                backgroundJobs.sort(
+                        (a, b) ->
+                                Integer.compare(
+                                        a.number,
+                                        b.number
+                                )
+                );
+
+                if (!backgroundJobs.isEmpty()) {
+
+                    BackgroundJob newest =
+                            backgroundJobs.get(
+                                    backgroundJobs.size() - 1
+                            );
+
+                    newest.marker = '-';
+                }
+
+            } else {
+
+                /*
+                 * Automatic reaping happens before the next
+                 * prompt.
+                 *
+                 * The newest remaining job becomes '+'.
+                 *
+                 * Example:
+                 *
+                 * [1]- Running
+                 * [2]+ Done
+                 *
+                 * becomes:
+                 *
+                 * [1]+ Running
+                 */
+                for (BackgroundJob job :
+                        backgroundJobs) {
+
+                    job.marker = ' ';
+                }
+
+                backgroundJobs.sort(
+                        (a, b) ->
+                                Integer.compare(
+                                        a.number,
+                                        b.number
+                                )
+                );
+
+                if (!backgroundJobs.isEmpty()) {
+
+                    BackgroundJob newest =
+                            backgroundJobs.get(
+                                    backgroundJobs.size() - 1
+                            );
+
+                    newest.marker = '+';
                 }
             }
 
-            /*
-             * The new job is always '+'.
-             */
-            backgroundJobs.add(
-                    new BackgroundJob(
-                            nextJobNumber,
-                            process,
-                            input.trim(),
-                            '+'
-                    )
-            );
-
-            System.out.println(
-                    "[" +
-                    nextJobNumber +
-                    "] " +
-                    process.pid()
-            );
-
-            nextJobNumber++;
-
         } else {
 
-            ProcessExecutor.executeCommand(
-                    parts,
-                    currentDirectory
-            );
-        }
+            /*
+             * A non-'+' job completed.
+             *
+             * Keep the current '+' job.
+             *
+             * Clear any old '-' marker.
+             */
+            for (BackgroundJob job :
+                    backgroundJobs) {
 
-    } else {
+                if (job.marker == '-') {
 
-        System.out.println(
-                command +
-                ": command not found"
-        );
-    }
-}
+                    job.marker = ' ';
+                }
             }
         }
-    }
 
-    private static List<BackgroundJob> reapCompletedJobs(
-        List<BackgroundJob> backgroundJobs,
-        boolean[] hasReapedEarlierJob)
-        throws InterruptedException {
-
-    List<BackgroundJob> completedJobs = new ArrayList<>();
-
-    for (BackgroundJob job : backgroundJobs) {
-        if (!job.process.isAlive()) {
-            job.process.waitFor();
-            completedJobs.add(job);
-        }
-    }
-
-    if (completedJobs.isEmpty()) {
         return completedJobs;
     }
-
-    boolean promotePlus = !hasReapedEarlierJob[0];
-    hasReapedEarlierJob[0] = true;
-
-    boolean plusCompleted = false;
-
-    for (BackgroundJob job : completedJobs) {
-        if (job.marker == '+') {
-            plusCompleted = true;
-            break;
-        }
-    }
-
-    // Remove finished jobs from active pool
-    backgroundJobs.removeAll(completedJobs);
-
-    // Re-sort remaining active jobs by job number ascending
-    backgroundJobs.sort((a, b) -> Integer.compare(a.number, b.number));
-
-    if (plusCompleted) {
-        /*
-         * The current '+' job exited.
-         * Promote the newest remaining job unless an earlier job was reaped.
-         */
-        int size = backgroundJobs.size();
-        for (int i = 0; i < size; i++) {
-            if (i == size - 1 && promotePlus) {
-                backgroundJobs.get(i).marker = '+';
-            } else if (i == size - 1 || i == size - 2) {
-                backgroundJobs.get(i).marker = '-';
-            } else {
-                backgroundJobs.get(i).marker = ' ';
-            }
-        }
-    }
-    /*
-     * If the job that exited was '-' (or unmarked), the remaining
-     * jobs keep whatever markers they already had. The '-' slot is
-     * only ever (re)assigned when the '+' job completes (above) or
-     * when a new job is started (see the marker-shifting block in
-     * main()) — it is never backfilled just because it fell vacant.
-     */
-
-    return completedJobs;
-}
 
     private static void printJobStatuses(
             List<BackgroundJob> completedJobs,
             List<BackgroundJob> runningJobs,
             boolean includeRunning) {
 
-        List<BackgroundJob> allJobs = new ArrayList<>();
+        List<BackgroundJob> allJobs =
+                new ArrayList<>();
 
+        /*
+         * Add completed jobs.
+         */
         allJobs.addAll(completedJobs);
 
+        /*
+         * jobs builtin also displays running jobs.
+         */
         if (includeRunning) {
+
             allJobs.addAll(runningJobs);
         }
 
+        /*
+         * Always print in job-number order.
+         */
         allJobs.sort(
-                (a, b) -> Integer.compare(a.number, b.number)
+                (a, b) ->
+                        Integer.compare(
+                                a.number,
+                                b.number
+                        )
         );
 
-        for (BackgroundJob job : allJobs) {
+        for (BackgroundJob job :
+                allJobs) {
 
-            boolean running = job.process.isAlive();
+            boolean running =
+                    job.process.isAlive();
 
             String status;
             String command;
 
             if (running) {
+
                 status = "Running";
+
+                /*
+                 * Running jobs include '&'.
+                 */
                 command = job.command;
+
             } else {
+
                 status = "Done";
-                command = job.command.replaceAll("\\s*&$", "");
+
+                /*
+                 * Done jobs do not include '&'.
+                 */
+                command =
+                        job.command.replaceAll(
+                                "\\s*&$",
+                                ""
+                        );
             }
 
             System.out.printf(
@@ -451,3 +609,4 @@ public class Main {
         }
     }
 }
+```
