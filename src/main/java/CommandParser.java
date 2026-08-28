@@ -30,91 +30,85 @@ public final class CommandParser {
             // TAB
             if (c == '\t') {
 
-                String current = input.toString();
-                int lastSpace = current.lastIndexOf(' ');
-                String prefix = current.substring(lastSpace + 1);
+    String current = input.toString();
 
-                ArrayList<String> matches =
-                        findFilenameMatches(prefix);
+    ArrayList<String> matches =
+            findMatches(current, builtins);
 
-                // No matches
-                if (matches.isEmpty()) {
-                    System.out.print("\007");
-                    waitingForSecondTab = false;
-                    continue;
+    if (matches.isEmpty()) {
+        System.out.print("\007");
+        waitingForSecondTab = false;
+        continue;
+    }
+
+    // Exactly one match
+    if (matches.size() == 1) {
+
+        String completion = matches.get(0);
+
+        String remaining =
+                completion.substring(current.length());
+
+        System.out.print(remaining);
+        System.out.print(" ");
+
+        input.append(remaining);
+        input.append(" ");
+
+        waitingForSecondTab = false;
+        continue;
+    }
+
+    // Multiple matches
+    String commonPrefix =
+            longestCommonPrefix(matches);
+
+    // There are additional characters we can autocomplete
+    if (commonPrefix.length() > current.length()) {
+
+        String remaining =
+                commonPrefix.substring(current.length());
+
+        System.out.print(remaining);
+
+        input.append(remaining);
+
+        waitingForSecondTab = false;
+    }
+
+    // Already at the longest common prefix
+    else {
+
+        if (!waitingForSecondTab) {
+
+            System.out.print("\007");
+
+            waitingForSecondTab = true;
+
+        } else {
+
+            System.out.println();
+
+            for (int i = 0; i < matches.size(); i++) {
+
+                if (i > 0) {
+                    System.out.print("  ");
                 }
 
-                // One match
-                if (matches.size() == 1) {
-
-                    String completion = matches.get(0);
-
-                    String remaining =
-                            completion.substring(prefix.length());
-
-                    System.out.print(remaining);
-                    System.out.print(" ");
-
-                    input.append(remaining);
-                    input.append(" ");
-
-                    waitingForSecondTab = false;
-                    continue;
-                }
-
-                // Multiple matches
-                String commonPrefix =
-                        longestCommonPrefix(matches);
-
-                // Can extend the current input
-                if (commonPrefix.length() > prefix.length()) {
-
-                    String remaining =
-                            commonPrefix.substring(prefix.length());
-
-                    System.out.print(remaining);
-
-                    input.append(remaining);
-
-                    // We extended the completion,
-                    // so the next TAB is considered the first TAB.
-                    waitingForSecondTab = false;
-                }
-
-                // Cannot extend any further
-                else {
-                    if (!waitingForSecondTab) {
-
-                        System.out.print("\007");
-
-                        waitingForSecondTab = true;
-                    }
-
-                    // Second TAB
-                    else {
-
-                        System.out.println();
-
-                        for (int i = 0; i < matches.size(); i++) {
-
-                            if (i > 0) {
-                                System.out.print("  ");
-                            }
-
-                            System.out.print(matches.get(i));
-                        }
-
-                        System.out.println();
-
-                        System.out.print("$ ");
-                        System.out.print(current);
-
-                        waitingForSecondTab = false;
-                    }
-                }
-
-                continue;
+                System.out.print(matches.get(i));
             }
+
+            System.out.println();
+
+            System.out.print("$ ");
+            System.out.print(current);
+
+            waitingForSecondTab = false;
+        }
+    }
+
+    continue;
+}
 
             // Backspace
             if (c == 127 || c == 8) {
@@ -139,32 +133,49 @@ public final class CommandParser {
         }
     }
 
-    private static ArrayList<String> findFilenameMatches(
-            String prefix) {
+    private static ArrayList<String> findMatches(String prefix, Set<String> builtins) {
 
-        ArrayList<String> matches = new ArrayList<>();
+    ArrayList<String> matches = new ArrayList<>();
 
-        File currentDirectory =
-                new File(System.getProperty("user.dir"));
-
-        File[] files = currentDirectory.listFiles();
-
-        if (files == null) {
-            return matches;
+    // Builtins
+    for (String builtin : builtins) {
+        if (builtin.startsWith(prefix)) {
+            matches.add(builtin);
         }
-
-        for (File file : files) {
-
-            if (file.getName().startsWith(prefix)) {
-                matches.add(file.getName());
-            }
-        }
-
-        matches.sort(String::compareTo);
-
-        return matches;
     }
 
+    // PATH executables
+    String path = System.getenv("PATH");
+
+    if (path != null) {
+        String[] directories = path.split(":");
+
+        for (String directory : directories) {
+
+            File dir = new File(directory);
+            File[] files = dir.listFiles();
+
+            if (files == null) {
+                continue;
+            }
+
+            for (File file : files) {
+
+                if (file.isFile()
+                        && file.canExecute()
+                        && file.getName().startsWith(prefix)
+                        && !matches.contains(file.getName())) {
+
+                    matches.add(file.getName());
+                }
+            }
+        }
+    }
+
+    matches.sort(String::compareTo);
+
+    return matches;
+}
     private static String longestCommonPrefix(
             ArrayList<String> strings) {
 
