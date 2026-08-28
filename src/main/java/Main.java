@@ -275,133 +275,146 @@ public class Main {
 
                 default -> {
 
-                    String executablePath =
-                            ProcessExecutor.findExecutable(
-                                    command
-                            );
+    String executablePath =
+            ProcessExecutor.findExecutable(
+                    command
+            );
 
-                    if (executablePath != null) {
+    if (executablePath != null) {
 
-                        if (isBackground) {
+        if (isBackground) {
 
-                            Process process =
-                                    ProcessExecutor.startCommand(
-                                            parts,
-                                            currentDirectory
-                                    );
+            Process process =
+                    ProcessExecutor.startCommand(
+                            parts,
+                            currentDirectory
+                    );
 
-                            backgroundJobs.add(
-                                    new BackgroundJob(
-                                            nextJobNumber,
-                                            process,
-                                            input.trim(),
-                                            '+'
-                                    )
-                            );
-
-                            reapCompletedJobs(backgroundJobs);
-
-                            System.out.println(
-                                    "[" +
-                                    nextJobNumber +
-                                    "] " +
-                                    process.pid()
-                            );
-
-                            nextJobNumber++;
-
-                        } else {
-
-                            ProcessExecutor.executeCommand(
-                                    parts,
-                                    currentDirectory
-                            );
-                        }
-
-                    } else {
-
-                        System.out.println(
-                                command +
-                                ": command not found"
-                        );
-                    }
+            /*
+             * Shift existing markers down:
+             * '-' becomes ' '
+             * '+' becomes '-'
+             */
+            for (BackgroundJob job : backgroundJobs) {
+                if (job.marker == '-') {
+                    job.marker = ' ';
+                } else if (job.marker == '+') {
+                    job.marker = '-';
                 }
+            }
+
+            /*
+             * The new job is always '+'.
+             */
+            backgroundJobs.add(
+                    new BackgroundJob(
+                            nextJobNumber,
+                            process,
+                            input.trim(),
+                            '+'
+                    )
+            );
+
+            System.out.println(
+                    "[" +
+                    nextJobNumber +
+                    "] " +
+                    process.pid()
+            );
+
+            nextJobNumber++;
+
+        } else {
+
+            ProcessExecutor.executeCommand(
+                    parts,
+                    currentDirectory
+            );
+        }
+
+    } else {
+
+        System.out.println(
+                command +
+                ": command not found"
+        );
+    }
+}
             }
         }
     }
 
     private static List<BackgroundJob> reapCompletedJobs(
-            List<BackgroundJob> backgroundJobs)
-            throws InterruptedException {
+        List<BackgroundJob> backgroundJobs)
+        throws InterruptedException {
 
-        List<BackgroundJob> completedJobs = new ArrayList<>();
+    List<BackgroundJob> completedJobs = new ArrayList<>();
 
-        for (BackgroundJob job : backgroundJobs) {
-            if (!job.process.isAlive()) {
-                job.process.waitFor();
-                completedJobs.add(job);
-            }
+    for (BackgroundJob job : backgroundJobs) {
+        if (!job.process.isAlive()) {
+            job.process.waitFor();
+            completedJobs.add(job);
         }
+    }
 
-        if (completedJobs.isEmpty()) {
-            return completedJobs;
-        }
-
-        // Check which markers finished
-        boolean plusCompleted = false;
-        boolean minusCompleted = false;
-
-        for (BackgroundJob job : completedJobs) {
-            if (job.marker == '+') {
-                plusCompleted = true;
-            } else if (job.marker == '-') {
-                minusCompleted = true;
-            }
-        }
-
-        // Remove completed jobs from active list
-        backgroundJobs.removeAll(completedJobs);
-
-        // Update markers of remaining active jobs
-        if (plusCompleted) {
-            // Newest remaining active job becomes '+'
-            // Second newest active job becomes '-'
-            backgroundJobs.sort((a, b) -> Integer.compare(a.number, b.number));
-            int size = backgroundJobs.size();
-
-            for (int i = 0; i < size; i++) {
-                if (i == size - 1) {
-                    backgroundJobs.get(i).marker = '+';
-                } else if (i == size - 2) {
-                    backgroundJobs.get(i).marker = '-';
-                } else {
-                    backgroundJobs.get(i).marker = ' ';
-                }
-            }
-        } else if (minusCompleted) {
-            // '+' remains '+'. The newest non-'+' active job becomes '-'
-            backgroundJobs.sort((a, b) -> Integer.compare(a.number, b.number));
-            int size = backgroundJobs.size();
-
-            for (int i = 0; i < size; i++) {
-                BackgroundJob job = backgroundJobs.get(i);
-                if (job.marker == '-') {
-                    job.marker = ' ';
-                }
-            }
-
-            // Find newest remaining job that isn't '+' to assign '-'
-            for (int i = size - 1; i >= 0; i--) {
-                BackgroundJob job = backgroundJobs.get(i);
-                if (job.marker != '+') {
-                    job.marker = '-';
-                    break;
-                }
-            }
-        }
-
+    if (completedJobs.isEmpty()) {
         return completedJobs;
     }
+
+    boolean plusCompleted = false;
+    boolean minusCompleted = false;
+
+    for (BackgroundJob job : completedJobs) {
+        if (job.marker == '+') {
+            plusCompleted = true;
+        } else if (job.marker == '-') {
+            minusCompleted = true;
+        }
+    }
+
+    // Remove finished jobs from active pool
+    backgroundJobs.removeAll(completedJobs);
+
+    // Re-sort remaining active jobs by job number ascending
+    backgroundJobs.sort((a, b) -> Integer.compare(a.number, b.number));
+
+    if (plusCompleted) {
+        /*
+         * The current '+' job exited.
+         * The newest remaining job takes '+', and second-newest takes '-'.
+         */
+        int size = backgroundJobs.size();
+        for (int i = 0; i < size; i++) {
+            if (i == size - 1) {
+                backgroundJobs.get(i).marker = '+';
+            } else if (i == size - 2) {
+                backgroundJobs.get(i).marker = '-';
+            } else {
+                backgroundJobs.get(i).marker = ' ';
+            }
+        }
+    } else if (minusCompleted) {
+        /*
+         * The '-' job exited.
+         * Clear former '-' markers and set the newest job that isn't '+' to '-'.
+         */
+        for (BackgroundJob job : backgroundJobs) {
+            if (job.marker == '-') {
+                job.marker = ' ';
+            }
+        }
+        for (int i = backgroundJobs.size() - 1; i >= 0; i--) {
+            BackgroundJob job = backgroundJobs.get(i);
+            if (job.marker != '+') {
+                job.marker = '-';
+                break;
+            }
+        }
+    }
+
+    return completedJobs;
+}
+
     private static void printJobStatuses(
             List<BackgroundJob> completedJobs,
             List<BackgroundJob> runningJobs,
