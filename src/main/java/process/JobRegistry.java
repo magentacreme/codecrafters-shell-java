@@ -25,6 +25,30 @@ public class JobRegistry
         jobByPid.put(job.getPid(), job);
     }
 
+    public int nextJobNumber()
+    {
+        int nextJobNumber = 1;
+        while (true)
+        {
+            boolean numberInUse = false;
+            for (Job job : jobByPid.values())
+            {
+                if (job.getJobNumber() == nextJobNumber)
+                {
+                    numberInUse = true;
+                    break;
+                }
+            }
+
+            if (!numberInUse)
+            {
+                return nextJobNumber;
+            }
+
+            nextJobNumber++;
+        }
+    }
+
     public void remove(long pid)
     {
         jobByPid.remove(pid);

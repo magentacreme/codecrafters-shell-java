@@ -13,7 +13,6 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import java.util.regex.Pattern;
@@ -62,8 +61,6 @@ public class Main
     private static AutoCompleteRegistry autoCompleteRegistry;
     private static PathResolver pathResolver;
     private static Environment environment;
-
-    private static final AtomicInteger jobNumber = new AtomicInteger(1);
 
     public static void main(String[] args) throws Exception
     {
@@ -467,8 +464,9 @@ public class Main
 
             if (background)
             {
-                System.out.printf("[%s] %s\n", jobNumber.getAndIncrement(), process.pid());
-                jobRegistry.register(new Job(jobNumber.get(), process.pid(), input, JobStatus.RUNNING, Instant.now()));
+                int jobNumber = jobRegistry.nextJobNumber();
+                System.out.printf("[%s] %s\n", jobNumber, process.pid());
+                jobRegistry.register(new Job(jobNumber, process.pid(), input, JobStatus.RUNNING, Instant.now()));
             }
             else
             {
