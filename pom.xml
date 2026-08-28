@@ -8,6 +8,14 @@
     <artifactId>codecrafters-shell</artifactId>
     <version>1.0</version>
 
+    <dependencies>
+        <dependency>
+            <groupId>org.jline</groupId>
+            <artifactId>jline</artifactId>
+            <version>3.30.5</version>
+        </dependency>
+    </dependencies>
+
    <properties>
         <maven.compiler.source>26</maven.compiler.source>
         <maven.compiler.target>26</maven.compiler.target>
@@ -20,6 +28,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.14.0</version>
                 <configuration>
                     <compilerArgs>
                         <arg>--enable-preview</arg>
