@@ -214,11 +214,16 @@ if (c == '\t') {
 
     String directoryPath;
     String prefix;
+    String outputPrefix;
 
     if (lastSlash == -1) {
 
+        // Search current directory
         directoryPath = ".";
         prefix = partialPath;
+
+        // Don't include "./" in the completion
+        outputPrefix = "";
 
     } else {
 
@@ -227,6 +232,8 @@ if (c == '\t') {
 
         prefix =
                 partialPath.substring(lastSlash + 1);
+
+        outputPrefix = directoryPath;
     }
 
     File directory = new File(directoryPath);
@@ -239,14 +246,19 @@ if (c == '\t') {
 
     for (File file : files) {
 
-        if (!file.getName().startsWith(prefix)) {
+        String name = file.getName();
+
+        if (name.equals(".") || name.equals("..")) {
+            continue;
+        }
+
+        if (!name.startsWith(prefix)) {
             continue;
         }
 
         String completion =
-                directoryPath + file.getName();
+                outputPrefix + name;
 
-        // Directory -> include trailing /
         if (file.isDirectory()) {
             completion += "/";
         }
@@ -258,7 +270,6 @@ if (c == '\t') {
 
     return matches;
 }    
-    
     private static String longestCommonPrefix(
             ArrayList<String> strings) {
 
