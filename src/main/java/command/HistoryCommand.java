@@ -11,6 +11,7 @@ import java.util.List;
 public class HistoryCommand implements Command
 {
     private final List<String> history;
+    private int lastWrittenIndex;
 
     public HistoryCommand(List<String> history)
     {
@@ -28,6 +29,11 @@ public class HistoryCommand implements Command
         if (!args.isEmpty() && args.getFirst().equals("-w"))
         {
             writeHistoryFile(args, stderr);
+            return;
+        }
+        if (!args.isEmpty() && args.getFirst().equals("-a"))
+        {
+            appendHistoryFile(args, stderr);
             return;
         }
 
@@ -54,9 +60,11 @@ public class HistoryCommand implements Command
 
         try
         {
-            Files.readAllLines(Path.of(args.get(1))).stream()
+            List<String> loadedHistory = Files.readAllLines(Path.of(args.get(1)));
+            loadedHistory.stream()
                     .filter(line -> !line.isEmpty())
                     .forEach(history::add);
+            lastWrittenIndex = history.size();
         }
         catch (IOException e)
         {
@@ -81,6 +89,32 @@ public class HistoryCommand implements Command
                     StandardOpenOption.CREATE,
                     StandardOpenOption.TRUNCATE_EXISTING
             );
+            lastWrittenIndex = history.size();
+        }
+        catch (IOException e)
+        {
+            stderr.println("history: " + e.getMessage());
+        }
+    }
+
+    private void appendHistoryFile(List<String> args, PrintStream stderr)
+    {
+        if (args.size() < 2)
+        {
+            stderr.println("history: -a: option requires an argument");
+            return;
+        }
+
+        try
+        {
+            Files.write(
+                    Path.of(args.get(1)),
+                    history.subList(lastWrittenIndex, history.size()),
+                    StandardCharsets.UTF_8,
+                    StandardOpenOption.CREATE,
+                    StandardOpenOption.APPEND
+            );
+            lastWrittenIndex = history.size();
         }
         catch (IOException e)
         {
