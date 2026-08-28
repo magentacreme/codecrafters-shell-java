@@ -40,15 +40,23 @@ if (c == '\t') {
     int lastSpace = current.lastIndexOf(' ');
 
     if (lastSpace > 0) {
-        String command = current.substring(0, current.indexOf(' '));
-        String completer = completionScripts.get(command);
+        String[] words = parse(current);
+        if (words.length > 0) {
+            String command = words[0];
+            String completer = completionScripts.get(command);
 
-        if (completer != null) {
-            String completion = runCompleter(completer);
+            if (completer != null) {
+                String currentWord = current.substring(lastSpace + 1);
+                String previousWord = words.length > 1 ? words[words.length - 2] : "";
+                String completion = runCompleter(completer, command, currentWord, previousWord);
 
-            if (completion != null) {
-                System.out.print(completion + " ");
-                input.append(completion).append(" ");
+                if (completion == null || completion.isEmpty()) {
+                    System.out.print("\007");
+                } else {
+                    System.out.print(completion + " ");
+                    input.append(completion).append(" ");
+                }
+
                 waitingForSecondTab = false;
                 continue;
             }
@@ -225,8 +233,10 @@ if (c == '\t') {
     return matches;
 }
 
-    private static String runCompleter(String completer) throws Exception {
-        Process process = new ProcessBuilder(completer).start();
+    private static String runCompleter(
+            String completer, String command, String currentWord, String previousWord)
+            throws Exception {
+        Process process = new ProcessBuilder(completer, command, currentWord, previousWord).start();
         try (BufferedReader output = new BufferedReader(
                 new InputStreamReader(process.getInputStream()))) {
             String completion = output.readLine();
