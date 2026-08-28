@@ -1,6 +1,7 @@
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Map;
 import java.util.Set;
@@ -48,7 +49,8 @@ if (c == '\t') {
             if (completer != null) {
                 String currentWord = current.substring(lastSpace + 1);
                 String previousWord = words.length > 1 ? words[words.length - 2] : "";
-                String completion = runCompleter(completer, command, currentWord, previousWord);
+                String completion = runCompleter(
+                    completer, command, currentWord, previousWord, current);
 
                 if (completion == null || completion.isEmpty()) {
                     System.out.print("\007");
@@ -237,9 +239,16 @@ if (c == '\t') {
 }
 
     private static String runCompleter(
-            String completer, String command, String currentWord, String previousWord)
+            String completer, String command, String currentWord, String previousWord,
+            String commandLine)
             throws Exception {
-        Process process = new ProcessBuilder(completer, command, currentWord, previousWord).start();
+        ProcessBuilder processBuilder = new ProcessBuilder(
+            completer, command, currentWord, previousWord);
+        processBuilder.environment().put("COMP_LINE", commandLine);
+        processBuilder.environment().put(
+            "COMP_POINT",
+            String.valueOf(commandLine.getBytes(StandardCharsets.UTF_8).length));
+        Process process = processBuilder.start();
         try (BufferedReader output = new BufferedReader(
                 new InputStreamReader(process.getInputStream()))) {
             String completion = output.readLine();
