@@ -5,12 +5,11 @@ import java.util.Set;
 public final class CommandParser {
 
     private CommandParser() {}
-
+    
     public static String readCommand(Set<String> builtins) throws Exception {
 
         StringBuilder input = new StringBuilder();
 
-        // True when the previous TAB had multiple matches
         boolean waitingForSecondTab = false;
 
         while (true) {
@@ -32,30 +31,26 @@ public final class CommandParser {
             if (c == '\t') {
 
                 String current = input.toString();
+                int lastSpace = current.lastIndexOf(' ');
+                String prefix = current.substring(lastSpace + 1);
 
                 ArrayList<String> matches =
-                        findMatches(current, builtins);
+                        findFilenameMatches(prefix);
 
-                // -------------------------
                 // No matches
-                // -------------------------
                 if (matches.isEmpty()) {
-
                     System.out.print("\007");
-
                     waitingForSecondTab = false;
                     continue;
                 }
 
-                // -------------------------
                 // One match
-                // -------------------------
                 if (matches.size() == 1) {
 
                     String completion = matches.get(0);
 
                     String remaining =
-                            completion.substring(current.length());
+                            completion.substring(prefix.length());
 
                     System.out.print(remaining);
                     System.out.print(" ");
@@ -67,31 +62,27 @@ public final class CommandParser {
                     continue;
                 }
 
-                // -------------------------
                 // Multiple matches
-                // -------------------------
-
                 String commonPrefix =
                         longestCommonPrefix(matches);
 
                 // Can extend the current input
-                if (commonPrefix.length() > current.length()) {
+                if (commonPrefix.length() > prefix.length()) {
 
                     String remaining =
-                            commonPrefix.substring(current.length());
+                            commonPrefix.substring(prefix.length());
 
                     System.out.print(remaining);
 
                     input.append(remaining);
 
-                    // We have not printed options yet
+                    // We extended the completion,
+                    // so the next TAB is considered the first TAB.
                     waitingForSecondTab = false;
                 }
 
-                // Can't extend any further
+                // Cannot extend any further
                 else {
-
-                    // First TAB
                     if (!waitingForSecondTab) {
 
                         System.out.print("\007");
@@ -148,47 +139,24 @@ public final class CommandParser {
         }
     }
 
-    private static ArrayList<String> findMatches(
-            String prefix,
-            Set<String> builtins) {
+    private static ArrayList<String> findFilenameMatches(
+            String prefix) {
 
         ArrayList<String> matches = new ArrayList<>();
 
-        // Builtins
-        for (String builtin : builtins) {
+        File currentDirectory =
+                new File(System.getProperty("user.dir"));
 
-            if (builtin.startsWith(prefix)) {
-                matches.add(builtin);
-            }
+        File[] files = currentDirectory.listFiles();
+
+        if (files == null) {
+            return matches;
         }
 
-        // PATH executables
-        String path = System.getenv("PATH");
+        for (File file : files) {
 
-        if (path != null) {
-
-            String[] directories = path.split(":");
-
-            for (String directory : directories) {
-
-                File dir = new File(directory);
-
-                File[] files = dir.listFiles();
-
-                if (files == null) {
-                    continue;
-                }
-
-                for (File file : files) {
-
-                    if (file.isFile()
-                            && file.canExecute()
-                            && file.getName().startsWith(prefix)
-                            && !matches.contains(file.getName())) {
-
-                        matches.add(file.getName());
-                    }
-                }
+            if (file.getName().startsWith(prefix)) {
+                matches.add(file.getName());
             }
         }
 
@@ -245,9 +213,7 @@ public final class CommandParser {
 
             char c = input.charAt(i);
 
-            // -------------------------
             // Single quotes
-            // -------------------------
             if (inSingleQuote) {
 
                 argumentStarted = true;
@@ -259,9 +225,7 @@ public final class CommandParser {
                 }
             }
 
-            // -------------------------
             // Double quotes
-            // -------------------------
             else if (inDoubleQuote) {
 
                 argumentStarted = true;
@@ -300,9 +264,7 @@ public final class CommandParser {
                 }
             }
 
-            // -------------------------
             // Outside quotes
-            // -------------------------
             else {
 
                 // Backslash
