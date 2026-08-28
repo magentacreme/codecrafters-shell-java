@@ -4,7 +4,7 @@ import java.util.Map;
 import java.util.Set;
 
 public class Main {
-    static final Set<String> builtins = Set.of("exit", "echo", "type", "pwd", "cd","complete");
+    static final Set<String> builtins = Set.of("exit", "echo", "type", "pwd", "cd", "complete", "jobs");
 
     public static void main(String[] args) throws Exception {
         
@@ -60,6 +60,8 @@ public class Main {
                     }
                 }
                 case "pwd" -> System.out.println(currentDirectory.getAbsolutePath());
+                case "jobs" -> {
+                }
                 case "cd" -> {
                     if (parts.length < 2) {
                         continue;
