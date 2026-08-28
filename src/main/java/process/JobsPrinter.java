@@ -43,15 +43,7 @@ public class JobsPrinter
             String status = createStatusColumn(job.getStatus());
             String command = job.getCommand();
 
-            int displayIndex = i + 1;
-            if (job.getPreviousDisplayIndex() == null)
-            {
-                job.setPreviousDisplayIndex(displayIndex);
-            }
-            else
-            {
-                displayIndex = job.getPreviousDisplayIndex();
-            }
+            int displayIndex = job.getJobNumber();
 
             if (job.getStatus() == JobStatus.DONE)
             {
@@ -60,7 +52,6 @@ public class JobsPrinter
             }
             else
             {
-                job.setPreviousDisplayIndex(i + 1);
             }
 
             printStream.printf("[%d]%s  %s%s\n", displayIndex, marker, status, command);
