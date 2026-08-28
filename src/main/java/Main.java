@@ -359,91 +359,82 @@ public class Main {
      * Completed jobs are removed from backgroundJobs.
      */
     private static List<BackgroundJob> reapCompletedJobs(
-            List<BackgroundJob> backgroundJobs)
-            throws InterruptedException {
+        List<BackgroundJob> backgroundJobs)
+        throws InterruptedException {
 
-        List<BackgroundJob> completedJobs =
-                new ArrayList<>();
+    List<BackgroundJob> completedJobs = new ArrayList<>();
 
-        /*
-         * Find all jobs that have exited.
-         */
-        for (BackgroundJob job : backgroundJobs) {
-
-            if (!job.process.isAlive()) {
-
-                job.process.waitFor();
-
-                completedJobs.add(job);
-            }
+    for (BackgroundJob job : backgroundJobs) {
+        if (!job.process.isAlive()) {
+            job.process.waitFor();
+            completedJobs.add(job);
         }
+    }
 
-        /*
-         * If nothing completed, there is nothing else
-         * to do.
-         */
-        if (completedJobs.isEmpty()) {
-            return completedJobs;
-        }
-
-        /*
-         * Check whether the + job was among the jobs
-         * that completed.
-         */
-        boolean plusJobCompleted = false;
-
-        for (BackgroundJob job : completedJobs) {
-
-            if (job.marker == '+') {
-                plusJobCompleted = true;
-                break;
-            }
-        }
-
-        /*
-         * Remove completed jobs from the job table.
-         */
-        backgroundJobs.removeAll(
-                completedJobs
-        );
-
-        if (plusJobCompleted) {
-
-            /*
-             * The current + job disappeared.
-             *
-             * Promote the old - job to +.
-             */
-            for (BackgroundJob job :
-                    backgroundJobs) {
-
-                if (job.marker == '-') {
-
-                    job.marker = '+';
-
-                    break;
-                }
-            }
-
-        } else {
-
-            /*
-             * A non-current job disappeared.
-             *
-             * The old - marker is no longer valid.
-             */
-            for (BackgroundJob job :
-                    backgroundJobs) {
-
-                if (job.marker == '-') {
-                    job.marker = ' ';
-                }
-            }
-        }
-
+    if (completedJobs.isEmpty()) {
         return completedJobs;
     }
 
+    /*
+     * Remember whether the + job completed.
+     */
+    boolean plusJobCompleted = false;
+
+    for (BackgroundJob job : completedJobs) {
+        if (job.marker == '+') {
+            plusJobCompleted = true;
+            break;
+        }
+    }
+
+    /*
+     * Remove completed jobs.
+     */
+    backgroundJobs.removeAll(completedJobs);
+
+    if (plusJobCompleted) {
+
+        /*
+         * The + job completed.
+         *
+         * The highest remaining job becomes +.
+         * The second-highest remaining job becomes -.
+         */
+        backgroundJobs.sort(
+                (a, b) -> Integer.compare(a.number, b.number)
+        );
+
+        for (BackgroundJob job : backgroundJobs) {
+            job.marker = ' ';
+        }
+
+        int size = backgroundJobs.size();
+
+        if (size >= 1) {
+            backgroundJobs.get(size - 1).marker = '+';
+        }
+
+        if (size >= 2) {
+            backgroundJobs.get(size - 2).marker = '-';
+        }
+
+    } else {
+
+        /*
+         * A non-+ job completed.
+         *
+         * Keep the existing + job.
+         * Remove the old - marker.
+         */
+        for (BackgroundJob job : backgroundJobs) {
+            if (job.marker == '-') {
+                job.marker = ' ';
+            }
+        }
+    }
+
+    return completedJobs;
+}
     /*
      * Print completed and/or running jobs.
      */
