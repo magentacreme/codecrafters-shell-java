@@ -78,6 +78,11 @@ public class Main {
                         System.out.println("cd: " + path + ": No such file or directory");
                     }
                 }
+                case "complete" -> {
+                    if (parts.length >= 3 && parts[1].equals("-p")) {
+                        System.out.println("complete: " + parts[2] + ": no completion specification");
+                    }
+                }
                 default -> {
                     String executablePath = ProcessExecutor.findExecutable(command);
                     if (executablePath != null) {
