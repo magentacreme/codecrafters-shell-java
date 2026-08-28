@@ -299,7 +299,7 @@ public class Main {
                                     )
                             );
 
-                            updateJobMarkers(backgroundJobs);
+                            reapCompletedJobs(backgroundJobs);
 
                             System.out.println(
                                     "[" +
@@ -347,33 +347,61 @@ public class Main {
             return completedJobs;
         }
 
+        // Check which markers finished
+        boolean plusCompleted = false;
+        boolean minusCompleted = false;
+
+        for (BackgroundJob job : completedJobs) {
+            if (job.marker == '+') {
+                plusCompleted = true;
+            } else if (job.marker == '-') {
+                minusCompleted = true;
+            }
+        }
+
+        // Remove completed jobs from active list
         backgroundJobs.removeAll(completedJobs);
-        updateJobMarkers(backgroundJobs);
+
+        // Update markers of remaining active jobs
+        if (plusCompleted) {
+            // Newest remaining active job becomes '+'
+            // Second newest active job becomes '-'
+            backgroundJobs.sort((a, b) -> Integer.compare(a.number, b.number));
+            int size = backgroundJobs.size();
+
+            for (int i = 0; i < size; i++) {
+                if (i == size - 1) {
+                    backgroundJobs.get(i).marker = '+';
+                } else if (i == size - 2) {
+                    backgroundJobs.get(i).marker = '-';
+                } else {
+                    backgroundJobs.get(i).marker = ' ';
+                }
+            }
+        } else if (minusCompleted) {
+            // '+' remains '+'. The newest non-'+' active job becomes '-'
+            backgroundJobs.sort((a, b) -> Integer.compare(a.number, b.number));
+            int size = backgroundJobs.size();
+
+            for (int i = 0; i < size; i++) {
+                BackgroundJob job = backgroundJobs.get(i);
+                if (job.marker == '-') {
+                    job.marker = ' ';
+                }
+            }
+
+            // Find newest remaining job that isn't '+' to assign '-'
+            for (int i = size - 1; i >= 0; i--) {
+                BackgroundJob job = backgroundJobs.get(i);
+                if (job.marker != '+') {
+                    job.marker = '-';
+                    break;
+                }
+            }
+        }
 
         return completedJobs;
     }
-
-    private static void updateJobMarkers(List<BackgroundJob> backgroundJobs) {
-        if (backgroundJobs.isEmpty()) {
-            return;
-        }
-
-        backgroundJobs.sort(
-                (a, b) -> Integer.compare(a.number, b.number)
-        );
-
-        int size = backgroundJobs.size();
-        for (int i = 0; i < size; i++) {
-            if (i == size - 1) {
-                backgroundJobs.get(i).marker = '+';
-            } else if (i == size - 2) {
-                backgroundJobs.get(i).marker = '-';
-            } else {
-                backgroundJobs.get(i).marker = ' ';
-            }
-        }
-    }
-
     private static void printJobStatuses(
             List<BackgroundJob> completedJobs,
             List<BackgroundJob> runningJobs,
