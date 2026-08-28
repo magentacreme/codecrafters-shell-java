@@ -16,6 +16,7 @@ public class HistoryCommand implements Command
     public HistoryCommand(List<String> history)
     {
         this.history = history;
+        this.lastWrittenIndex = history.size();
     }
 
     @Override

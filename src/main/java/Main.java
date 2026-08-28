@@ -77,6 +77,20 @@ public class Main
         environment = new Environment();
         autoCompleteRegistry = new AutoCompleteRegistry();
 
+        String historyFile = System.getenv("HISTFILE");
+        if (historyFile != null)
+        {
+            try
+            {
+                Files.readAllLines(Path.of(historyFile)).stream()
+                        .filter(line -> !line.isEmpty())
+                        .forEach(history::add);
+            }
+            catch (IOException ignored)
+            {
+            }
+        }
+
         List<Command> commands = List.of(
                 new EchoCommand(),
                 new ExitCommand(),
