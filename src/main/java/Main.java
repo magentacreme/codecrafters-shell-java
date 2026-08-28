@@ -91,6 +91,27 @@ public class Main
             }
         }
 
+        if (historyFile != null)
+        {
+            Path historyPath = Path.of(historyFile);
+            Runtime.getRuntime().addShutdownHook(new Thread(() ->
+            {
+                try
+                {
+                    Files.write(
+                            historyPath,
+                            history,
+                            java.nio.charset.StandardCharsets.UTF_8,
+                            StandardOpenOption.CREATE,
+                            StandardOpenOption.TRUNCATE_EXISTING
+                    );
+                }
+                catch (IOException ignored)
+                {
+                }
+            }));
+        }
+
         List<Command> commands = List.of(
                 new EchoCommand(),
                 new ExitCommand(),
