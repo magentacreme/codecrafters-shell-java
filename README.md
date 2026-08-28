@@ -1,34 +1,54 @@
-[![progress-banner](https://backend.codecrafters.io/progress/shell/e6218d24-88ae-413f-b83d-6e06bda7934d)](https://app.codecrafters.io/users/magentacreme?r=2qF)
+# codecrafters-shell-java
 
-This is a starting point for Java solutions to the
-["Build Your Own Shell" Challenge](https://app.codecrafters.io/courses/shell/overview).
+A Java implementation of the CodeCrafters “Build Your Own Shell” challenge.
 
-In this challenge, you'll build your own POSIX compliant shell that's capable of
-interpreting shell commands, running external programs and builtin commands like
-cd, pwd, echo and more. Along the way, you'll learn about shell command parsing,
-REPLs, builtin commands, and more.
+## What this shell supports
 
-**Note**: If you're viewing this repo on GitHub, head over to
-[codecrafters.io](https://codecrafters.io) to try the challenge.
+- Builtins: `echo`, `exit`, `pwd`, `cd`, `type`, `complete`, `jobs`, `history`, `declare`
+- External command execution via `PATH`
+- Pipelines (`|`)
+- Output/error redirection (`>`, `>>`, `2>`, `2>>`)
+- Background jobs (`&`) and job status reporting
+- Basic variable expansion (`$VAR`, `${VAR}`)
+- Interactive completion using JLine, including custom completion hooks
+- History tracking with `HISTFILE` support
 
-# Passing the first stage
+## Project structure
 
-The entry point for your `shell` implementation is in `src/main/java/Main.java`.
-Study and uncomment the relevant code, then run the command below to execute the
-tests on our servers:
+- Main entrypoint: `/src/main/java/Main.java`
+- Builtin commands: `/src/main/java/command`
+- Parsing utilities: `/src/main/java/parser`
+- Job management: `/src/main/java/process`
+- Completion system: `/src/main/java/autocomplete`
+- Shell environment handling: `/src/main/java/env`
+
+## Requirements
+
+- Java 26 (preview features enabled)
+- Maven
+
+## Run locally
+
+```sh
+./your_program.sh
+```
+
+This script builds the project and starts the shell.
+
+## Build manually
+
+```sh
+mvn -q -B package -Ddir=/tmp/codecrafters-build-shell-java
+```
+
+## Run tests/checks
+
+```sh
+mvn -q -B test
+```
+
+## Submit to CodeCrafters
 
 ```sh
 codecrafters submit
 ```
-
-Time to move on to the next stage!
-
-# Stage 2 & beyond
-
-Note: This section is for stages 2 and beyond.
-
-1. Ensure you have `mvn` installed locally
-1. Run `./your_program.sh` to run your program, which is implemented in
-   `src/main/java/Main.java`.
-1. Run `codecrafters submit` to submit your solution to CodeCrafters. Test
-   output will be streamed to your terminal.
